@@ -9,7 +9,7 @@
 #define	SDN_HIGH 	palSetPad(GPIOB, GPIOB_SDN)
 #define	SDN_LOW		palClearPad(GPIOB, GPIOB_SDN)
 
-#define GET_NIRQ	palReadPad(GPIOB, GBIOB_NIRQ)
+#define GET_NIRQ	palReadPad(GPIOB, GPIOB_NIRQ)
 
 void silabs_tune_up(BaseSequentialStream *chp, int argc, char *argv[]);
 void silabs_tune_down(BaseSequentialStream *chp, int argc, char *argv[]);

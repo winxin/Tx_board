@@ -71,9 +71,9 @@ void RF_switch(uint8_t state) {
  */
 static void spicb(SPIDriver *spip) {
   /* On transfer end just releases the slave select line.*/
-  chSysLockFromIsr();
+  chSysLockFromISR();
   spiUnselectI(spip);
-  chSysUnlockFromIsr();
+  chSysUnlockFromISR();
 }
 
 /*
@@ -98,7 +98,7 @@ void si446x_spi( uint8_t tx_bytes, uint8_t* tx_buff, uint8_t rx_bytes, uint8_t* 
 	spiExchange(&SPID1, tx_bytes, tx_buff, dummy_buffer); /* Atomic transfer operations. */
 	spiUnselect(&SPID1); /* Slave Select de-assertion. */
 	dummy_buffer[0]=0x44;/*Silabs read command*/
-	while(!palReadPad(GPIOB, GPIOB_CTS)){chThdSleepMicrosecond(20);}/*Wait for CTS high*/
+	while(!palReadPad(GPIOB, GPIOB_CTS)){chThdSleepMicroseconds(20);}/*Wait for CTS high*/
 	if(rx_bytes) {
 		spiSelect(&SPID1); /* Slave Select assertion. */
 		spiExchange(&SPID1, rx_bytes, dummy_buffer, rx_buff); /* Atomic transfer operations. */
@@ -267,7 +267,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	memcpy(tx_buffer, (uint8_t [7]){0x02, 0x01, 0x01, x3, x2, x1, x0}, 7*sizeof(uint8_t));
 	/*Now send the command over SPI1*/
 	si446x_spi( 7, tx_buffer, 2, rx_buffer);
-	while(GET_NIRQ|(!palReadPad(GPIOB, GBIOB_POR))){chThdSleepMilliseconds(10);}/*Wait for NIRQ low and POR high*/
+	while(GET_NIRQ|(!palReadPad(GPIOB, GPIOB_POR))){chThdSleepMilliseconds(10);}/*Wait for NIRQ low and POR high*/
 	memcpy(tx_buffer, (uint8_t [4]){0x20, 0x00, 0x00, 0x00}, 4*sizeof(uint8_t));/*Clear all interrupts*/
 	si446x_spi( 4, tx_buffer, 0, NULL);
 	memcpy(tx_buffer, (uint8_t [2]){0x01, 0x01}, 2*sizeof(uint8_t));
@@ -308,7 +308,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
   * @retval thread pointer to the spawned thread
   */
 thread_t* Spawn_Si446x_Thread(void) {
-	chBSemInit(&Silabs_busy,FALSE);/*Init it as not taken*/
+	chBSemObjectInit(&Silabs_busy,FALSE);/*Init it as not taken*/
 	/*
 	* Creates the thread. Thread has priority slightly above normal and takes no argument
 	*/
