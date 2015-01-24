@@ -5,6 +5,8 @@ volatile uint8_t Command=0;
 BinarySemaphore Silabs_busy;
 volatile uint32_t Active_Frequency;
 
+static void spicb(SPIDriver *spip);
+
 void silabs_tube_up(BaseSequentialStream *chp, int argc, char *argv[]) {
 	if (argc > 0) {
 		chprintf(chp, "Tunes up by 50hz, Usage: u\r\n");
@@ -57,6 +59,13 @@ void RF_switch(uint8_t state) {
 }
 
 /*
+ * Si446x spi comms - blocking using the DMA driver from ChibiOS
+*/
+void si446x_spi( uint8_t tx_bytes, uint8_t* tx_buff, uint8_t rx_bytes, uint8_t* rx_buff){
+
+}
+
+/*
  * Si446x thread, times are in milliseconds.
  */
 static THD_WORKING_AREA(waThreadSI, 1024);
@@ -65,8 +74,28 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
   (void)arg;
   chRegSetThreadName("si4432");
   /* Configuration goes here - setup the PLL carrier, TX modem settings and the Packet handler Tx functionality*/
+	/* Reset the radio */
+	SDN_HIGH;
+	chThdSleepMilliseconds(10);
+	SDN_LOW;						/*Radio is now reset*/
+	chThdSleepMilliseconds(10)				/*Wait another 10ms to boot*/
+	while(!palReadPad(GPIOB, GPIOB_CTS)){chThdSleepMilliseconds(10);}/*Wait for CTS high after POR*/
+	/* Configure the radio ready for use, use simple busy wait logic here, as only has to happen once */
+	uint8_t part=0;
+	{
+	uint8_t tx_buffer[16];
+	uint8_t rx_buffer[12];
+	//divide VCXO_FREQ into its bytes; MSB first
+	uint8_t x3 = VCXO_FREQ / 0x1000000;
+	uint8_t x2 = (VCXO_FREQ - (uint32_t)x3 * 0x1000000) / 0x10000;
+	uint8_t x1 = (VCXO_FREQ - (uint32_t)x3 * 0x1000000 - (uint32_t)x2 * 0x10000) / 0x100;
+	uint8_t x0 = (VCXO_FREQ - (uint32_t)x3 * 0x1000000 - (uint32_t)x2 * 0x10000 - (uint32_t)x1 * 0x100); 
+	memcpy(tx_buffer, (uint8_t [7]){0x02, 0x01, 0x01, x3, x2, x1, x0}, 7*sizeof(uint8_t));
+	/*Now send the command over SPI1*/
+	si446x_spi( 7, tx_buffer, 2, rx_buffer);
+	while(GET_NIRQ|(!palReadPad(GPIOB, GBIOB_POR))){chThdSleepMilliseconds(10);}/*Wait for NIRQ low and POR high*/
 
-
+	}
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
 	chBSemWait(&Silabs_busy);/*Wait for something to happen...*/
 	/*Process the comms here - SPI transactions to either load packet and send or tune up/down*/
