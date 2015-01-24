@@ -123,6 +123,9 @@ static const ShellCommand commands[] = {
   {"threads", cmd_threads},
   {"test", cmd_test},
   {"write", cmd_write},
+  {"u", silabs_tune_up},
+  {"d", silabs_tune_down},
+  {"s", silabs_send_command},
   {NULL, NULL}
 };
 
@@ -145,9 +148,9 @@ static __attribute__((noreturn)) THD_FUNCTION(Thread1, arg) {
   chRegSetThreadName("blinker");
   while (TRUE) {
     systime_t time = serusbcfg.usbp->state == USB_ACTIVE ? 250 : 500;
-    palClearPad(GPIOB, GPIOB_LED);
+    palClearPad(GPIOA, GPIOA_LED);
     chThdSleepMilliseconds(time);
-    palSetPad(GPIOB, GPIOB_LED);
+    palSetPad(GPIOA, GPIOA_LED);
     chThdSleepMilliseconds(time);
   }
 }
@@ -167,7 +170,7 @@ int __attribute__((noreturn)) main(void) {
    */
   halInit();
   chSysInit();
-
+  AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_JTAGDISABLE;/* Disable the JTAG but keep SWD in operation */
   /*
    * Initializes a serial-over-USB CDC driver.
    */
@@ -193,6 +196,11 @@ int __attribute__((noreturn)) main(void) {
    * Creates the blinker thread.
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+  /*
+   * Creates the silabs thread.
+
+   */
+  chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO+1, Thread2, NULL);
 
   /*
    * Normal main() thread activity, in this demo it does nothing except

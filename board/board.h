@@ -52,6 +52,15 @@
 #define GPIOD_OSC_IN            0
 #define GPIOD_OSC_OUT           1
 
+#define GPIOB_RFSWITCH_A	4
+#define GPIOB_RFSWITCH_B	12 /*These are the RF switch toggle lines, note B.12 needs IND_EN to GoPro pad jumper*/
+
+#define GPIOB_NIRQ		0
+#define GPIOB_SDN 		9
+#define GPIOB_POR		10
+#define GPIOB_CTS		11
+#define GPIOA_NSEL		4 /*All the GPIO functions to the silabs*/
+
 /* J1 connector */
 
 // pin 1:       AV+
