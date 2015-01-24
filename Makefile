@@ -193,13 +193,13 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -std=gnu99 -DCHPRINTF_USE_FLOAT -D_DEBUG=1 -g3
 
 # Define ASM defines here
 UADEFS =
 
 # List all user directories here
-UINCDIR =
+UINCDIR = Silabs
 
 # List the user directory to look for the libraries here
 ULIBDIR =

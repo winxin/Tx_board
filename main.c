@@ -26,6 +26,8 @@
 
 #include "usbcfg.h"
 
+#include "Si446x_thread.h"
+
 /* Virtual serial port over USB.*/
 SerialUSBDriver SDU1;
 
@@ -200,7 +202,7 @@ int __attribute__((noreturn)) main(void) {
    * Creates the silabs thread.
 
    */
-  chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO+1, Thread2, NULL);
+  Spawn_Si446x_Thread();
 
   /*
    * Normal main() thread activity, in this demo it does nothing except

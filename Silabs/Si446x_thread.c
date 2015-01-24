@@ -2,13 +2,21 @@
 
 volatile uint8_t Command_string[8]={};
 volatile uint8_t Command=0;
-BinarySemaphore Silabs_busy;
+binary_semaphore_t Silabs_busy;
 volatile uint32_t Active_Frequency=434075000;
 volatile uint8_t Active_level=32;	/*Approx 15dBm*/
+volatile uint16_t Active_shift=300;	/*300hz*/
+uint8_t Active_banddiv=10;
+int8_t Outdiv = 4;
+
+const uint8_t Silabs_Header[4]="$$RO";
+
+#define VCXO_FREQ 26000000UL
+#define RSSI_THRESH -100
 
 static void spicb(SPIDriver *spip);
 
-void silabs_tube_up(BaseSequentialStream *chp, int argc, char *argv[]) {
+void silabs_tune_up(BaseSequentialStream *chp, int argc, char *argv[]) {
 	if (argc > 0) {
 		chprintf(chp, "Tunes up by 50hz, Usage: u\r\n");
 		return;
@@ -18,7 +26,7 @@ void silabs_tube_up(BaseSequentialStream *chp, int argc, char *argv[]) {
 	chBSemWait(&Silabs_busy);
 }
 
-void silabs_tube_down(BaseSequentialStream *chp, int argc, char *argv[]) {
+void silabs_tune_down(BaseSequentialStream *chp, int argc, char *argv[]) {
 	if (argc > 0) {
 		chprintf(chp, "Tunes down by 50hz, Usage: d\r\n");
 		return;
@@ -38,7 +46,6 @@ void silabs_send_command(BaseSequentialStream *chp, int argc, char *argv[]) {
 		return;
 	}
 	RF_switch(1);
-	uint8_t packet_len
 	strcpy(Command_string,argv[0]);
 	Command=3;	
 	chBSemSignal(&Silabs_busy);
@@ -89,13 +96,13 @@ void si446x_spi( uint8_t tx_bytes, uint8_t* tx_buff, uint8_t rx_bytes, uint8_t* 
 	uint8_t dummy_buffer[20]={};/*For dummy data*/
 	spiSelect(&SPID1); /* Slave Select assertion. */
 	spiExchange(&SPID1, tx_bytes, tx_buff, dummy_buffer); /* Atomic transfer operations. */
-	spiUnselect(spip); /* Slave Select de-assertion. */
+	spiUnselect(&SPID1); /* Slave Select de-assertion. */
 	dummy_buffer[0]=0x44;/*Silabs read command*/
 	while(!palReadPad(GPIOB, GPIOB_CTS)){chThdSleepMicrosecond(20);}/*Wait for CTS high*/
 	if(rx_bytes) {
 		spiSelect(&SPID1); /* Slave Select assertion. */
 		spiExchange(&SPID1, rx_bytes, dummy_buffer, rx_buff); /* Atomic transfer operations. */
-		spiUnselect(spip); /* Slave Select de-assertion. */
+		spiUnselect(&SPID1); /* Slave Select de-assertion. */
 	}
 }
 
@@ -120,7 +127,8 @@ void si446x_set_frequency(uint32_t freq) {/*Set the output divider according to 
 	uint32_t m = (unsigned long)(rest * 524288UL);
 	// set the band parameter
 	uint32_t sy_sel = 8;
-	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x20, 0x01, 0x51, (band + sy_sel)}, 5*sizeof(uint8_t));
+	Active_banddiv=sy_sel+band;
+	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x20, 0x01, 0x51, Active_banddiv}, 5*sizeof(uint8_t));
 	si446x_spi( 5, tx_buffer, 0, rx_buffer);
 	// Set the pll parameters
 	uint32_t m2 = m / 0x10000;
@@ -160,12 +168,72 @@ void si446x_set_deviation_channel_bps(uint32_t deviation, uint32_t channel_space
 	modem_freq_dev_1 = mask & (channel_spacing >> 8);
 	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x40, 0x02, 0x04, modem_freq_dev_1, modem_freq_dev_0}, 6*sizeof(uint8_t));
 	si446x_spi( 6, tx_buffer, 0, rx_buffer);
-	bps*=10;		/*From WDS settings, modem speed is in 0.1bps units*/
+	bps*=Active_banddiv;		/*From WDS settings, modem speed is in 0.1bps units, but it seems to scale with the frequency, for Manchester is data bps*/
 	modem_freq_dev_0 = mask & bps;
 	modem_freq_dev_1 = mask & (bps >> 8);
 	modem_freq_dev_2 = mask & (bps >> 16);
 	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x20, 0x03, 0x03, modem_freq_dev_2, modem_freq_dev_1, modem_freq_dev_0}, 7*sizeof(uint8_t));
 	si446x_spi( 7, tx_buffer, 0, rx_buffer);
+}
+
+/**
+  * @brief  This function sets silabs Rx modem config, its pretty much an exact copy of the balloon payload settings, only with packet for Tx. 
+  * Tx Guassian/NCO settings not used, not sure if these might need to be added?
+  * @param  None
+  * @retval None
+  */
+void si446x_set_modem(void) {
+	uint8_t tx_buffer[16];
+	uint8_t rx_buffer[2];
+	//Set to CW mode
+	//Sets modem into direct asynchronous 2FSK mode using packet handler (default config is ok here), no Manchester
+	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x20, 0x02, 0x00, 0x02, 0x00}, 5*sizeof(uint8_t));
+	si446x_spi( 5, tx_buffer, 0, rx_buffer);
+	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with no seed, and 2FSK
+	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x22, 0x06, 0x00, 0x0A}, 7*sizeof(uint8_t));
+	si446x_spi( 7, tx_buffer, 0, rx_buffer);
+	//Configure the rx signal path, these setting are from WDS - lower the IF slightly and setup the CIC Rx filter
+	memcpy(tx_buffer, (uint8_t [15]){0x11, 0x20, 0x0B, 0x19, 0x80, 0x08, 0x03, 0x80, 0x00, 0xF0, 0x10, 0x74, 0xE8, 0x00, 0x55}, 15*sizeof(uint8_t));
+	si446x_spi( 15, tx_buffer, 0, rx_buffer);
+	//Configure BCR - NCO settings for the RX signal path - WDS settings
+	memcpy(tx_buffer, (uint8_t [16]){0x11, 0x20, 0x0C, 0x24, 0x06, 0x0C, 0xAB, 0x03, 0x03, 0x02, 0xC2, 0x00, 0x04, 0x32, 0xC0, 0x01}, 16*sizeof(uint8_t));
+	si446x_spi( 16, tx_buffer, 0, rx_buffer);
+	//Configure AFC/AGC settings for Rx path, WDS settings - only change the AFC here, as the other settings are only slightly tweaked by WDS
+	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x20, 0x03, 0x30, 0x03, 0x64, 0xC0}, 7*sizeof(uint8_t));//This just sets AFC limiter values
+	si446x_spi( 7, tx_buffer, 0, rx_buffer);
+	//Configure Rx search period control - WDS settings, note that the second setting can be overwritten if the frequency is changed
+	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x20, 0x02, 0x50, 0x84, 0x0A}, 6*sizeof(uint8_t));
+	si446x_spi( 6, tx_buffer, 0, rx_buffer);
+	//Configure Rx BCR and AFC config - WDS settings
+	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x20, 0x02, 0x54, 0x0F, 0x07}, 6*sizeof(uint8_t));
+	si446x_spi( 6, tx_buffer, 0, rx_buffer);
+	//Configure signal arrival detect - WDS settings
+	memcpy(tx_buffer, (uint8_t [9]){0x11, 0x20, 0x05, 0x5B, 0x40, 0x04, 0x21, 0x78, 0x20}, 9*sizeof(uint8_t));
+	si446x_spi( 9, tx_buffer, 0, rx_buffer);
+	//Configure first and second set of Rx filter coefficients - WDS settings
+	memcpy(tx_buffer, (uint8_t [16]){0x11, 0x21, 0x0C, 0x00, 0xFF, 0xBA, 0x0F, 0x51, 0xCF, 0xA9, 0xC9, 0xFC, 0x1B, 0x1E, 0x0F, 0x01}, 16*sizeof(uint8_t));
+	si446x_spi( 9, tx_buffer, 0, rx_buffer);
+	memcpy(tx_buffer, (uint8_t [16]){0x11, 0x21, 0x0C, 0x0C, 0xFC, 0xFD, 0x15, 0xFF, 0x00, 0x0F, 0xFF, 0xBA, 0x0F, 0x51, 0xCF, 0xA9}, 16*sizeof(uint8_t));
+	si446x_spi( 9, tx_buffer, 0, rx_buffer);
+	memcpy(tx_buffer, (uint8_t [16]){0x11, 0x21, 0x0C, 0x18, 0xC9, 0xFC, 0x1B, 0x1E, 0x0F, 0x01, 0xFC, 0xFD, 0x15, 0xFF, 0x00, 0x0F}, 16*sizeof(uint8_t));
+	si446x_spi( 9, tx_buffer, 0, rx_buffer);
+	//Configure the RSSI thresholding for RX mode, with 12dB jump threshold (reset if RSSI changes this much during Rx), RSSI mean with packet toggle
+	//RSSI_THRESH is in dBm, it needs to be converted to 0.5dBm steps offset by ~130
+	uint8_t rssi = (2*(RSSI_THRESH+130))&0xFF;
+	memcpy(tx_buffer, (uint8_t [8]){0x11, 0x20, 0x04, 0x4A, rssi, 0x0C, 0x12, 0x3E}, 8*sizeof(uint8_t));
+	si446x_spi( 8, tx_buffer, 0, rx_buffer);
+	//Configure the match value, this constrains the first 4 bytes of data to match e.g. $$RO
+	memcpy(tx_buffer, (uint8_t [16]){0x11, 0x30, 0x0C, 0x00,Silabs_Header[0], 0xFF, 0x41,Silabs_Header[1], 0xFF, 0x42,Silabs_Header[2], 0xFF, 0x43,Silabs_Header[3], 0xFF, 0x44}, 16*sizeof(uint8_t));
+	si446x_spi( 16, tx_buffer, 0, rx_buffer);
+	//Configure the Packet handler to use seperate FIELD config for RX, and turn off after packet rx
+	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x12, 0x01, 0x06, 0x80}, 5*sizeof(uint8_t));
+	si446x_spi( 5, tx_buffer, 0, rx_buffer);
+	//Use CCIT-16 CRC with 0xFFFF seed on the packet handler, same as UKHAS protocol
+	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x12, 0x01, 0x00, 0x85}, 5*sizeof(uint8_t));
+	si446x_spi( 5, tx_buffer, 0, rx_buffer);
+	//Set the sync word as two bytes 0xD391, this has good autocorrelation 8/1 peak to secondary ratio, default config used, no bit errors, 16 bit
+	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x11, 0x02, 0x01, 0xD3, 0x91}, 6*sizeof(uint8_t));
+	si446x_spi( 6, tx_buffer, 0, rx_buffer);
 }
 
 /*
@@ -185,11 +253,10 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	SDN_HIGH;
 	chThdSleepMilliseconds(10);
 	SDN_LOW;						/*Radio is now reset*/
-	chThdSleepMilliseconds(10)				/*Wait another 10ms to boot*/
+	chThdSleepMilliseconds(10);				/*Wait another 10ms to boot*/
 	while(!palReadPad(GPIOB, GPIOB_CTS)){chThdSleepMilliseconds(10);}/*Wait for CTS high after POR*/
 	/* Configure the radio ready for use, use simple busy wait logic here, as only has to happen once */
 	uint8_t part=0;
-	{
 	uint8_t tx_buffer[16];
 	uint8_t rx_buffer[12];
 	//divide VCXO_FREQ into its bytes; MSB first
@@ -213,7 +280,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	si446x_set_frequency(Active_Frequency);
 	//Setup default channel config
 	si446x_set_deviation_channel_bps(300, 3000, 200);
-	}
+	si446x_set_modem();
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
 	chBSemWait(&Silabs_busy);/*Wait for something to happen...*/
 	/*Process the comms here - SPI transactions to either load packet and send or tune up/down*/
@@ -222,8 +289,8 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	else if(Command==2)
 		Active_Frequency-=50;
 	else if(Command==3) {/*Load the string into the packet handler*/
-		tx_buff[0]=0x66;/*The load to FIFO command*/
-		strcpy(&tx_buff[1],Command_string);/*Followed by the payload*/
+		tx_buffer[0]=0x66;/*The load to FIFO command*/
+		strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
 		si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
 		/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
 		memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
@@ -240,7 +307,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
   * @param  void
   * @retval thread pointer to the spawned thread
   */
-Thread* Spawn_Si446x_Thread(void) {
+thread_t* Spawn_Si446x_Thread(void) {
 	chBSemInit(&Silabs_busy,FALSE);/*Init it as not taken*/
 	/*
 	* Creates the thread. Thread has priority slightly above normal and takes no argument
