@@ -14,5 +14,6 @@
 void silabs_tune_up(BaseSequentialStream *chp, int argc, char *argv[]);
 void silabs_tune_down(BaseSequentialStream *chp, int argc, char *argv[]);
 void silabs_send_command(BaseSequentialStream *chp, int argc, char *argv[]);
+void silabs_get_part_id(BaseSequentialStream *chp, int argc, char *argv[]);
 void RF_switch(uint8_t state);
 thread_t* Spawn_Si446x_Thread(void);

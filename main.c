@@ -128,6 +128,7 @@ static const ShellCommand commands[] = {
   {"u", silabs_tune_up},
   {"d", silabs_tune_down},
   {"s", silabs_send_command},
+  {"p", silabs_get_part_id},
   {NULL, NULL}
 };
 

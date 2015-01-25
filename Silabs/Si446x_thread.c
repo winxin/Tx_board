@@ -11,6 +11,8 @@ int8_t Outdiv = 4;
 
 const uint8_t Silabs_Header[4]="$$RO";
 
+volatile uint16_t Silabs_Part_ID=0;	/*Used to check that the device is functional*/
+
 #define VCXO_FREQ 26000000UL
 #define RSSI_THRESH -100
 
@@ -24,6 +26,7 @@ void silabs_tune_up(BaseSequentialStream *chp, int argc, char *argv[]) {
 	Command=1;
 	chBSemSignal(&Silabs_busy);
 	chBSemWait(&Silabs_busy);
+	chprintf(chp, "Frequency is: %u\r\n",Active_Frequency);
 }
 
 void silabs_tune_down(BaseSequentialStream *chp, int argc, char *argv[]) {
@@ -34,6 +37,7 @@ void silabs_tune_down(BaseSequentialStream *chp, int argc, char *argv[]) {
 	Command=2;
 	chBSemSignal(&Silabs_busy);
 	chBSemWait(&Silabs_busy);
+	chprintf(chp, "Frequency is: %u\r\n",Active_Frequency);
 }
 
 void silabs_send_command(BaseSequentialStream *chp, int argc, char *argv[]) {
@@ -51,6 +55,14 @@ void silabs_send_command(BaseSequentialStream *chp, int argc, char *argv[]) {
 	chBSemSignal(&Silabs_busy);
 	chBSemWait(&Silabs_busy);
 	RF_switch(0);
+}
+
+void silabs_get_part_id(BaseSequentialStream *chp, int argc, char *argv[]) {
+	if (argc) {
+		chprintf(chp, "Gets part ID, Usage: p \r\n");
+		return;
+	}
+	chprintf(chp, "%#4X\r\n",Silabs_Part_ID);
 }
 
 /* 
@@ -283,6 +295,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	memcpy(tx_buffer, (uint8_t [2]){0x01, 0x01}, 2*sizeof(uint8_t));
 	si446x_spi( 2, tx_buffer, 12, rx_buffer);
 	part=rx_buffer[3];//Should be 0x44
+	Silabs_Part_ID=*((uint16_t*)(&rx_buffer[3]));/* This can now be used to check that part */
 	//Only enable the packet received interrupt - global interrupt config and PH interrupt config bytes
 	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x01, 0x02, 0x00, 0x01, 0x10}, 6*sizeof(uint8_t));
 	si446x_spi( 6, tx_buffer, 0, NULL);
