@@ -89,6 +89,16 @@ static const SPIConfig spicfg = {
   SPI_CR1_MSTR | SPI_CR1_BR_0
 };
 
+static void switch_output_callback() {
+	RF_switch(0);
+}
+
+static GPTConfig gpt4cfg =
+{
+    1000,                    /* timer clock.*/
+    switch_output_callback    /* Timer callback.*/
+};
+
 /*
  * Si446x spi comms - blocking using the DMA driver from ChibiOS
 */
@@ -281,6 +291,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	//Setup default channel config
 	si446x_set_deviation_channel_bps(300, 3000, 200);
 	si446x_set_modem();
+	gptStart(&GPTD4, &gpt4cfg);
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
 	chBSemWait(&Silabs_busy);/*Wait for something to happen...*/
 	/*Process the comms here - SPI transactions to either load packet and send or tune up/down*/
@@ -289,12 +300,14 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	else if(Command==2)
 		Active_Frequency-=50;
 	else if(Command==3) {/*Load the string into the packet handler*/
+		RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
 		tx_buffer[0]=0x66;/*The load to FIFO command*/
 		strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
 		si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
 		/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
 		memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
 		si446x_spi( 5, tx_buffer, 0, rx_buffer);
+		gptStartOneShot(&GPTD4, 900); // 0.9 seconds to send the packet
 	}
 	if(Command && Command<3) /*Load the frequency into the PLL*/
 		si446x_set_frequency(Active_Frequency);
