@@ -13,6 +13,9 @@ const uint8_t Silabs_Header[4]="$$RO";
 
 volatile uint16_t Silabs_Part_ID=0;	/*Used to check that the device is functional*/
 
+uint8_t tx_buffer[16];			/*Globals used as comms buffers*/
+uint8_t rx_buffer[12];
+
 #define VCXO_FREQ 26000000UL
 #define RSSI_THRESH -100
 
@@ -114,18 +117,25 @@ static GPTConfig gpt4cfg =
 /*
  * Si446x spi comms - blocking using the DMA driver from ChibiOS
 */
-void si446x_spi( uint8_t tx_bytes, uint8_t* tx_buff, uint8_t rx_bytes, uint8_t* rx_buff){
+uint8_t si446x_spi( uint8_t tx_bytes, uint8_t* tx_buff, uint8_t rx_bytes, uint8_t* rx_buff){
 	uint8_t dummy_buffer[20]={};/*For dummy data*/
 	spiSelect(&SPID1); /* Slave Select assertion. */
 	spiExchange(&SPID1, tx_bytes, tx_buff, dummy_buffer); /* Atomic transfer operations. */
 	spiUnselect(&SPID1); /* Slave Select de-assertion. */
 	dummy_buffer[0]=0x44;/*Silabs read command*/
-	while(!palReadPad(GPIOB, GPIOB_CTS)){chThdSleepMicroseconds(20);}/*Wait for CTS high*/
+	uint32_t millis = MS2ST(chVTGetSystemTime());
+	while(!palReadPad(GPIOB, GPIOB_CTS)){
+		chThdSleepMicroseconds(20);
+		if((MS2ST(chVTGetSystemTime())-millis)>10){/*Silabs stalled*/
+			return 1;		
+		}
+	}/*Wait for CTS high*/
 	if(rx_bytes) {
 		spiSelect(&SPID1); /* Slave Select assertion. */
 		spiExchange(&SPID1, rx_bytes, dummy_buffer, rx_buff); /* Atomic transfer operations. */
 		spiUnselect(&SPID1); /* Slave Select de-assertion. */
 	}
+	return 0;
 }
 
 /**
@@ -133,10 +143,11 @@ void si446x_spi( uint8_t tx_bytes, uint8_t* tx_buff, uint8_t rx_bytes, uint8_t* 
   * @param  Center frequency in Hz
   * @retval None
   */
-void si446x_set_frequency(uint32_t freq) {/*Set the output divider according to recommended ranges given in Si446x datasheet*/
+uint8_t si446x_set_frequency(uint32_t freq) {/*Set the output divider according to recommended ranges given in Si446x datasheet*/
 	uint8_t band = 0;
 	uint8_t tx_buffer[16];
 	uint8_t rx_buffer[2];
+	uint8_t failure=0;
 	if (freq < 705000000UL) { Outdiv = 6; band = 1;};
 	if (freq < 525000000UL) { Outdiv = 8; band = 2;};
 	if (freq < 353000000UL) { Outdiv = 12; band = 3;};
@@ -151,7 +162,7 @@ void si446x_set_frequency(uint32_t freq) {/*Set the output divider according to 
 	uint32_t sy_sel = 8;
 	Active_banddiv=sy_sel+band;
 	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x20, 0x01, 0x51, Active_banddiv}, 5*sizeof(uint8_t));
-	si446x_spi( 5, tx_buffer, 0, rx_buffer);
+	failure=si446x_spi( 5, tx_buffer, 0, rx_buffer);
 	// Set the pll parameters
 	uint32_t m2 = m / 0x10000;
 	uint32_t m1 = (m - m2 * 0x10000) / 0x100;
@@ -160,10 +171,11 @@ void si446x_set_frequency(uint32_t freq) {/*Set the output divider according to 
 	uint8_t c1 = channel_increment / 0x100;
 	uint8_t c0 = channel_increment - (0x100 * c1);
 	memcpy(tx_buffer, (uint8_t [10]){0x11, 0x40, 0x06, 0x00, n, m2, m1, m0, c1, c0}, 10*sizeof(uint8_t));
-	si446x_spi( 10, tx_buffer, 0, rx_buffer);
+	failure|=si446x_spi( 10, tx_buffer, 0, rx_buffer);
 	// Set the Power
 	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x22, 0x01, 0x01, Active_level}, 5*sizeof(uint8_t));
-	si446x_spi( 5, tx_buffer, 0, rx_buffer);
+	failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
+	return failure;
 }
 
 /**
@@ -205,8 +217,6 @@ void si446x_set_deviation_channel_bps(uint32_t deviation, uint32_t channel_space
   * @retval None
   */
 void si446x_set_modem(void) {
-	uint8_t tx_buffer[16];
-	uint8_t rx_buffer[2];
 	//Set to CW mode
 	//Sets modem into direct asynchronous 2FSK mode using packet handler (default config is ok here), no Manchester
 	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x20, 0x02, 0x00, 0x02, 0x00}, 5*sizeof(uint8_t));
@@ -258,19 +268,7 @@ void si446x_set_modem(void) {
 	si446x_spi( 6, tx_buffer, 0, rx_buffer);
 }
 
-/*
- * Si446x thread, times are in milliseconds.
- */
-static THD_WORKING_AREA(waThreadSI, 1024);
-static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
-
-  (void)arg;
-  chRegSetThreadName("si4432");
-  /* Configuration goes here - setup the PLL carrier, TX modem settings and the Packet handler Tx functionality*/
-	/*
-	* Initializes the SPI driver 1.
-	*/
-	spiStart(&SPID1, &spicfg);
+void si446x_initialise(void) {
 	/* Reset the radio */
 	SDN_HIGH;
 	chThdSleepMilliseconds(10);
@@ -279,8 +277,6 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	while(!palReadPad(GPIOB, GPIOB_CTS)){chThdSleepMilliseconds(10);}/*Wait for CTS high after POR*/
 	/* Configure the radio ready for use, use simple busy wait logic here, as only has to happen once */
 	uint8_t part=0;
-	uint8_t tx_buffer[16];
-	uint8_t rx_buffer[12];
 	//divide VCXO_FREQ into its bytes; MSB first
 	uint8_t x3 = VCXO_FREQ / 0x1000000;
 	uint8_t x2 = (VCXO_FREQ - (uint32_t)x3 * 0x1000000) / 0x10000;
@@ -304,6 +300,23 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	//Setup default channel config
 	si446x_set_deviation_channel_bps(300, 3000, 200);
 	si446x_set_modem();
+}
+
+/*
+ * Si446x thread, times are in milliseconds.
+ */
+static THD_WORKING_AREA(waThreadSI, 1024);
+static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
+
+  (void)arg;
+  chRegSetThreadName("si4432");
+	uint8_t si446x_failure=0;
+  /* Configuration goes here - setup the PLL carrier, TX modem settings and the Packet handler Tx functionality*/
+	/*
+	* Initializes the SPI driver 1.
+	*/
+	spiStart(&SPID1, &spicfg);
+	si446x_initialise();
 	gptStart(&GPTD4, &gpt4cfg);
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
 	chBSemWait(&Silabs_busy);/*Wait for something to happen...*/
@@ -316,14 +329,18 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 		RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
 		tx_buffer[0]=0x66;/*The load to FIFO command*/
 		strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
-		si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
+		si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
 		/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
 		memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
-		si446x_spi( 5, tx_buffer, 0, rx_buffer);
+		si446x_failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
 		gptStartOneShot(&GPTD4, 900); // 0.9 seconds to send the packet
 	}
 	if(Command && Command<3) /*Load the frequency into the PLL*/
-		si446x_set_frequency(Active_Frequency);
+		si446x_failure|=si446x_set_frequency(Active_Frequency);
+	if(si446x_failure) {	/*Try to recover if radio breaks*/
+		si446x_initialise();
+		si446x_failure=0;
+	}
 	chBSemSignal(&Silabs_busy);
   }
 }
