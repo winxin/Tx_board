@@ -54,12 +54,10 @@ void silabs_send_command(BaseSequentialStream *chp, int argc, char *argv[]) {
 		chprintf(chp, "<packet> must be exactly 6 characters\r\n");
 		return;
 	}
-	RF_switch(1);
-	strcpy(Command_string,argv[0]);
+	strncpy(Command_string,argv[0],6);
 	Command=3;	
 	chBSemSignal(&Silabs_busy);
 	chBSemWaitTimeout(&Silabs_callback, MS2ST(1000));	
-	RF_switch(0);
 }
 
 void silabs_get_part_id(BaseSequentialStream *chp, int argc, char *argv[]) {
@@ -106,7 +104,7 @@ static const SPIConfig spicfg = {
   SPI_CR1_MSTR | SPI_CR1_BR_0
 };
 
-static void switch_output_callback() {
+static void switch_output_callback(GPTDriver *gpt_ptr) {
 	RF_switch(0);
 }
 
@@ -223,8 +221,8 @@ void si446x_set_modem(void) {
 	//Sets modem into direct asynchronous 2FSK mode using packet handler (default config is ok here), no Manchester
 	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x20, 0x02, 0x00, 0x02, 0x00}, 5*sizeof(uint8_t));
 	si446x_spi( 5, tx_buffer, 0, rx_buffer);
-	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with no seed, and 2FSK
-	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x22, 0x06, 0x00, 0x0A}, 7*sizeof(uint8_t));
+	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with no seed, and 2FSK (note shared register area)
+	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x0E, 0x06, 0x00, 0x0A}, 7*sizeof(uint8_t));
 	si446x_spi( 7, tx_buffer, 0, rx_buffer);
 	//Configure the rx signal path, these setting are from WDS - lower the IF slightly and setup the CIC Rx filter
 	memcpy(tx_buffer, (uint8_t [15]){0x11, 0x20, 0x0B, 0x19, 0x80, 0x08, 0x03, 0x80, 0x00, 0xF0, 0x10, 0x74, 0xE8, 0x00, 0x55}, 15*sizeof(uint8_t));
@@ -259,8 +257,8 @@ void si446x_set_modem(void) {
 	//Configure the match value, this constrains the first 4 bytes of data to match e.g. $$RO
 	memcpy(tx_buffer, (uint8_t [16]){0x11, 0x30, 0x0C, 0x00,Silabs_Header[0], 0xFF, 0x41,Silabs_Header[1], 0xFF, 0x42,Silabs_Header[2], 0xFF, 0x43,Silabs_Header[3], 0xFF, 0x44}, 16*sizeof(uint8_t));
 	si446x_spi( 16, tx_buffer, 0, rx_buffer);
-	//Configure the Packet handler to use seperate FIELD config for RX, and turn off after packet rx
-	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x12, 0x01, 0x06, 0x80}, 5*sizeof(uint8_t));
+	//Configure the Packet handler to (NOT use seperate FIELD config for RX), and turn off after packet rx
+	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x12, 0x01, 0x06, 0x00}, 5*sizeof(uint8_t));
 	si446x_spi( 5, tx_buffer, 0, rx_buffer);
 	//Use CCIT-16 CRC with 0xFFFF seed on the packet handler, same as UKHAS protocol
 	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x12, 0x01, 0x00, 0x85}, 5*sizeof(uint8_t));
@@ -319,6 +317,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	*/
 	spiStart(&SPID1, &spicfg);
 	si446x_initialise();
+	gptInit();
 	gptStart(&GPTD4, &gpt4cfg);
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
 	if(MSG_OK == chBSemWaitTimeout(&Silabs_busy, MS2ST(100))) {/*Wait for something to happen...*/
