@@ -2,7 +2,7 @@
 
 volatile uint8_t Command_string[8]={};
 volatile uint8_t Command=0;
-binary_semaphore_t Silabs_busy;
+binary_semaphore_t Silabs_busy,Silabs_callback;
 volatile uint32_t Active_Frequency=434075000;
 volatile uint8_t Active_level=32;	/*Approx 15dBm*/
 volatile uint16_t Active_shift=300;	/*300hz*/
@@ -28,8 +28,9 @@ void silabs_tune_up(BaseSequentialStream *chp, int argc, char *argv[]) {
 	}
 	Command=1;
 	chBSemSignal(&Silabs_busy);
-	chBSemWait(&Silabs_busy);
-	chprintf(chp, "Frequency is: %u\r\n",Active_Frequency);
+	if(MSG_OK == chBSemWaitTimeout(&Silabs_callback, MS2ST(1000))) {
+		chprintf(chp, "Frequency is: %u\r\n",Active_Frequency);
+	}
 }
 
 void silabs_tune_down(BaseSequentialStream *chp, int argc, char *argv[]) {
@@ -39,8 +40,9 @@ void silabs_tune_down(BaseSequentialStream *chp, int argc, char *argv[]) {
 	}
 	Command=2;
 	chBSemSignal(&Silabs_busy);
-	chBSemWait(&Silabs_busy);
-	chprintf(chp, "Frequency is: %u\r\n",Active_Frequency);
+	if(MSG_OK == chBSemWaitTimeout(&Silabs_callback, MS2ST(1000))) {
+		chprintf(chp, "Frequency is: %u\r\n",Active_Frequency);
+	}
 }
 
 void silabs_send_command(BaseSequentialStream *chp, int argc, char *argv[]) {
@@ -56,7 +58,7 @@ void silabs_send_command(BaseSequentialStream *chp, int argc, char *argv[]) {
 	strcpy(Command_string,argv[0]);
 	Command=3;	
 	chBSemSignal(&Silabs_busy);
-	chBSemWait(&Silabs_busy);
+	chBSemWaitTimeout(&Silabs_callback, MS2ST(1000));	
 	RF_switch(0);
 }
 
@@ -65,7 +67,7 @@ void silabs_get_part_id(BaseSequentialStream *chp, int argc, char *argv[]) {
 		chprintf(chp, "Gets part ID, Usage: p \r\n");
 		return;
 	}
-	chprintf(chp, "%#4X\r\n",Silabs_Part_ID);
+	chprintf(chp, "%4X\r\n",Silabs_Part_ID);
 }
 
 /* 
@@ -75,10 +77,10 @@ void RF_switch(uint8_t state) {
 	if(state)
 		palSetPad(GPIOB, GPIOB_RFSWITCH_A);
 	else
-		palSetPad(GPIOB, GPIOB_RFSWITCH_B);
+		palSetPad(GPIOA, GPIOA_RFSWITCH_B);
 	chThdSleepMilliseconds(35);/*Spec is 30ms switching time max*/
 	palClearPad(GPIOB, GPIOB_RFSWITCH_A);
-	palClearPad(GPIOB, GPIOB_RFSWITCH_B);/*Clear both the pins*/
+	palClearPad(GPIOA, GPIOA_RFSWITCH_B);/*Clear both the pins*/
 }
 
 /*
@@ -93,7 +95,7 @@ static void spicb(SPIDriver *spip) {
 
 /*
  * SPI configuration structure.
- * Maximum speed/2 (6MHz), CPHA=0, CPOL=0, 8bits frames, MSb transmitted first.
+ * Maximum speed/4 (6MHz), CPHA=0, CPOL=0, 8bits frames, MSb transmitted first.
  * The slave select line is the pin GPIOA_SPI1NSS on the port GPIOA.
  */
 static const SPIConfig spicfg = {
@@ -319,29 +321,30 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	si446x_initialise();
 	gptStart(&GPTD4, &gpt4cfg);
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
-	chBSemWait(&Silabs_busy);/*Wait for something to happen...*/
-	/*Process the comms here - SPI transactions to either load packet and send or tune up/down*/
-	if(Command==1)
-		Active_Frequency+=50;
-	else if(Command==2)
-		Active_Frequency-=50;
-	else if(Command==3) {/*Load the string into the packet handler*/
-		RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
-		tx_buffer[0]=0x66;/*The load to FIFO command*/
-		strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
-		si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
-		/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
-		memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
-		si446x_failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
-		gptStartOneShot(&GPTD4, 900); // 0.9 seconds to send the packet
+	if(MSG_OK == chBSemWaitTimeout(&Silabs_busy, MS2ST(100))) {/*Wait for something to happen...*/
+		/*Process the comms here - SPI transactions to either load packet and send or tune up/down*/
+		if(Command==1)
+			Active_Frequency+=50;
+		else if(Command==2)
+			Active_Frequency-=50;
+		else if(Command==3) {/*Load the string into the packet handler*/
+			RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
+			tx_buffer[0]=0x66;/*The load to FIFO command*/
+			strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
+			si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
+			/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
+			memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
+			si446x_failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
+			gptStartOneShot(&GPTD4, 900); // 0.9 seconds to send the packet
+		}
+		if(Command && Command<3) /*Load the frequency into the PLL*/
+			si446x_failure|=si446x_set_frequency(Active_Frequency);
+		if(si446x_failure) {	/*Try to recover if radio breaks*/
+			si446x_initialise();
+			si446x_failure=0;
+		}
 	}
-	if(Command && Command<3) /*Load the frequency into the PLL*/
-		si446x_failure|=si446x_set_frequency(Active_Frequency);
-	if(si446x_failure) {	/*Try to recover if radio breaks*/
-		si446x_initialise();
-		si446x_failure=0;
-	}
-	chBSemSignal(&Silabs_busy);
+	chBSemSignal(&Silabs_callback);
   }
 }
 
@@ -352,6 +355,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
   */
 thread_t* Spawn_Si446x_Thread(void) {
 	chBSemObjectInit(&Silabs_busy,FALSE);/*Init it as not taken*/
+	chBSemObjectInit(&Silabs_callback,FALSE);/*Init it as not taken*/
 	/*
 	* Creates the thread. Thread has priority slightly above normal and takes no argument
 	*/

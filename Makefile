@@ -8,7 +8,7 @@ USE_MAPLEMINI_BOOTLOADER ?= 0
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16 -DUSE_MAPLEMINI_BOOTLOADER=${USE_MAPLEMINI_BOOTLOADER}
+  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16 #-DUSE_MAPLEMINI_BOOTLOADER=${USE_MAPLEMINI_BOOTLOADER}
 endif
 
 # C specific options here (added to USE_OPT).

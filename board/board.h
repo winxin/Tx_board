@@ -47,13 +47,14 @@
 
 /* on-board */
 
-#define GPIOA_LED               15 /*Connected to the Cutdown drive*/
+#define GPIOA_RFSWITCH_B        15 /*Connected to the Cutdown drive*/
 #define GPIOB_USB_DISC          15 /*Not actually connected to anything*/
 #define GPIOD_OSC_IN            0
 #define GPIOD_OSC_OUT           1
 
-#define GPIOB_RFSWITCH_A	4
-#define GPIOB_RFSWITCH_B	12 /*These are the RF switch toggle lines, note B.12 needs IND_EN to GoPro pad jumper*/
+#define GPIOB_RFSWITCH_A	4 /*These are the RF switch toggle lines, note B.12 needs IND_EN to GoPro pad jumper*/
+#define GPIOB_LED		12 /*Front panel indicator LED*/
+#define GPIOB_PWR_EN		5 /*Should be enabled by default*/		
 
 #define GPIOB_NIRQ		0
 #define GPIOB_SDN 		9
@@ -142,7 +143,7 @@
  * PA7  - Alternative Push Pull 50Mhz (SCLK, SPI1 to si446x).
  * PA9  - Alternate output  (USART1 TX).
  * PA10 - Normal input      (USART1 RX).
- * PA15 - Push pull output 2Mhz (LED driven via cutdown output)
+ * PA15 - Push pull output 2Mhz (RFswitch driven via cutdown output, so needs a jumper to the GoPro header)
  */
 #define VAL_GPIOACRL            0xB8B34B88      /*  PA7...PA0 */
 #define VAL_GPIOACRH            0x288884B8      /* PA15...PA8 */
@@ -154,12 +155,13 @@
  * PB0    - Still input pull up, but note that this is connected to si446x NIRQ
  * PB2    - USB voltage detect pin (unused here, but left as input pull up, will go low if we lose USB but still have power)
  * PB4    - Push pull output 2Mhz set low (GPIO to RF switch)
+ * PB5    - Push pull output 2Mhz set high (PWR_EN)
  * PB9    - Push pull output 50Mhz (si446x SDN, so set low at power on).
  * PB10   - POR output from silabs, left as output pull up
  * PB11   - Same as above only CTS output from silabs
- * PB12   - Push pull output 2Mhz set low (second GPIO to RF switch - this is the Ind EN line on the board, so needs a jumper to the GoPro header) 
+ * PB12   - Push pull output 2Mhz set low (GPIO to LED - needs to jumper from Ind EN) 
  */
-#define VAL_GPIOBCRL            0x88828888      /*  PB7...PB0 */
+#define VAL_GPIOBCRL            0x88228888      /*  PB7...PB0 */
 #define VAL_GPIOBCRH            0x88828838      /* PB15...PB8 */
 #define VAL_GPIOBODR            0xFFFFEDEF
 
