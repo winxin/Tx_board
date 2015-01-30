@@ -28736,8 +28736,8 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 
   (void)arg;
   chRegSetThreadName("si4432");
- 80089a4:	4b90      	ldr	r3, [pc, #576]	; (8008be8 <SI_Thread.lto_priv.85+0x248>)
- 80089a6:	4991      	ldr	r1, [pc, #580]	; (8008bec <SI_Thread.lto_priv.85+0x24c>)
+ 80089a4:	4b8e      	ldr	r3, [pc, #568]	; (8008be0 <SI_Thread.lto_priv.85+0x240>)
+ 80089a6:	498f      	ldr	r1, [pc, #572]	; (8008be4 <SI_Thread.lto_priv.85+0x244>)
  80089a8:	699a      	ldr	r2, [r3, #24]
 
 /*
@@ -28758,8 +28758,8 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
   osalDbgAssert((spip->state == SPI_STOP) || (spip->state == SPI_READY),
                 "invalid state");
   spip->config = config;
- 80089b4:	4c8e      	ldr	r4, [pc, #568]	; (8008bf0 <SI_Thread.lto_priv.85+0x250>)
- 80089b6:	4b8f      	ldr	r3, [pc, #572]	; (8008bf4 <SI_Thread.lto_priv.85+0x254>)
+ 80089b4:	4c8c      	ldr	r4, [pc, #560]	; (8008be8 <SI_Thread.lto_priv.85+0x248>)
+ 80089b6:	4b8d      	ldr	r3, [pc, #564]	; (8008bec <SI_Thread.lto_priv.85+0x24c>)
  * @notapi
  */
 void spi_lld_start(SPIDriver *spip) {
@@ -28769,662 +28769,654 @@ void spi_lld_start(SPIDriver *spip) {
  80089b8:	7822      	ldrb	r2, [r4, #0]
  80089ba:	6063      	str	r3, [r4, #4]
  80089bc:	2a01      	cmp	r2, #1
- 80089be:	f000 80fc 	beq.w	8008bba <SI_Thread.lto_priv.85+0x21a>
+ 80089be:	d115      	bne.n	80089ec <SI_Thread.lto_priv.85+0x4c>
+#if STM32_SPI_USE_SPI1
+    if (&SPID1 == spip) {
+      bool b;
+      b = dmaStreamAllocate(spip->dmarx,
+ 80089c0:	498b      	ldr	r1, [pc, #556]	; (8008bf0 <SI_Thread.lto_priv.85+0x250>)
+ 80089c2:	6a20      	ldr	r0, [r4, #32]
+ 80089c4:	f7ff ff9c 	bl	8008900 <dmaStreamAllocate.constprop.12>
+                            STM32_SPI_SPI1_IRQ_PRIORITY,
+                            (stm32_dmaisr_t)spi_lld_serve_rx_interrupt,
+                            (void *)spip);
+      osalDbgAssert(!b, "stream already allocated");
+      b = dmaStreamAllocate(spip->dmatx,
+ 80089c8:	498a      	ldr	r1, [pc, #552]	; (8008bf4 <SI_Thread.lto_priv.85+0x254>)
+ 80089ca:	6a60      	ldr	r0, [r4, #36]	; 0x24
+ 80089cc:	f7ff ff98 	bl	8008900 <dmaStreamAllocate.constprop.12>
+                            STM32_SPI_SPI1_IRQ_PRIORITY,
+                            (stm32_dmaisr_t)spi_lld_serve_tx_interrupt,
+                            (void *)spip);
+      osalDbgAssert(!b, "stream already allocated");
+      rccEnableSPI1(FALSE);
+ 80089d0:	4989      	ldr	r1, [pc, #548]	; (8008bf8 <SI_Thread.lto_priv.85+0x258>)
+      rccEnableSPI6(FALSE);
+    }
+#endif
+
+    /* DMA setup.*/
+    dmaStreamSetPeripheral(spip->dmarx, &spip->spi->DR);
+ 80089d2:	6a25      	ldr	r5, [r4, #32]
+    dmaStreamSetPeripheral(spip->dmatx, &spip->spi->DR);
+ 80089d4:	6a60      	ldr	r0, [r4, #36]	; 0x24
+      b = dmaStreamAllocate(spip->dmatx,
+                            STM32_SPI_SPI1_IRQ_PRIORITY,
+                            (stm32_dmaisr_t)spi_lld_serve_tx_interrupt,
+                            (void *)spip);
+      osalDbgAssert(!b, "stream already allocated");
+      rccEnableSPI1(FALSE);
+ 80089d6:	698b      	ldr	r3, [r1, #24]
+      rccEnableSPI6(FALSE);
+    }
+#endif
+
+    /* DMA setup.*/
+    dmaStreamSetPeripheral(spip->dmarx, &spip->spi->DR);
+ 80089d8:	69e2      	ldr	r2, [r4, #28]
+ 80089da:	682d      	ldr	r5, [r5, #0]
+    dmaStreamSetPeripheral(spip->dmatx, &spip->spi->DR);
+ 80089dc:	6800      	ldr	r0, [r0, #0]
+      b = dmaStreamAllocate(spip->dmatx,
+                            STM32_SPI_SPI1_IRQ_PRIORITY,
+                            (stm32_dmaisr_t)spi_lld_serve_tx_interrupt,
+                            (void *)spip);
+      osalDbgAssert(!b, "stream already allocated");
+      rccEnableSPI1(FALSE);
+ 80089de:	f443 5380 	orr.w	r3, r3, #4096	; 0x1000
+ 80089e2:	618b      	str	r3, [r1, #24]
+      rccEnableSPI6(FALSE);
+    }
+#endif
+
+    /* DMA setup.*/
+    dmaStreamSetPeripheral(spip->dmarx, &spip->spi->DR);
+ 80089e4:	320c      	adds	r2, #12
+ 80089e6:	6863      	ldr	r3, [r4, #4]
+ 80089e8:	60aa      	str	r2, [r5, #8]
+    dmaStreamSetPeripheral(spip->dmatx, &spip->spi->DR);
+ 80089ea:	6082      	str	r2, [r0, #8]
+  }
+
+  /* Configuration-specific DMA setup.*/
+  if ((spip->config->cr1 & SPI_CR1_DFF) == 0) {
+ 80089ec:	8959      	ldrh	r1, [r3, #10]
+    /* Frame width is 8 bits or smaller.*/
+    spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
+                      STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
+    spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
+                      STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
+ 80089ee:	6ae3      	ldr	r3, [r4, #44]	; 0x2c
+
+  /* Configuration-specific DMA setup.*/
+  if ((spip->config->cr1 & SPI_CR1_DFF) == 0) {
+    /* Frame width is 8 bits or smaller.*/
+    spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
+                      STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
+ 80089f0:	6aa2      	ldr	r2, [r4, #40]	; 0x28
     dmaStreamSetPeripheral(spip->dmarx, &spip->spi->DR);
     dmaStreamSetPeripheral(spip->dmatx, &spip->spi->DR);
   }
 
   /* Configuration-specific DMA setup.*/
   if ((spip->config->cr1 & SPI_CR1_DFF) == 0) {
- 80089c2:	8959      	ldrh	r1, [r3, #10]
+ 80089f2:	0508      	lsls	r0, r1, #20
     /* Frame width is 8 bits or smaller.*/
     spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
- 80089c4:	6ae3      	ldr	r3, [r4, #44]	; 0x2c
+ 80089f4:	f423 6370 	bic.w	r3, r3, #3840	; 0xf00
 
   /* Configuration-specific DMA setup.*/
   if ((spip->config->cr1 & SPI_CR1_DFF) == 0) {
     /* Frame width is 8 bits or smaller.*/
     spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
- 80089c6:	6aa2      	ldr	r2, [r4, #40]	; 0x28
-    dmaStreamSetPeripheral(spip->dmarx, &spip->spi->DR);
-    dmaStreamSetPeripheral(spip->dmatx, &spip->spi->DR);
-  }
-
-  /* Configuration-specific DMA setup.*/
-  if ((spip->config->cr1 & SPI_CR1_DFF) == 0) {
- 80089c8:	0508      	lsls	r0, r1, #20
-    /* Frame width is 8 bits or smaller.*/
-    spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
-                      STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
-    spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
-                      STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
- 80089ca:	f423 6370 	bic.w	r3, r3, #3840	; 0xf00
-
-  /* Configuration-specific DMA setup.*/
-  if ((spip->config->cr1 & SPI_CR1_DFF) == 0) {
-    /* Frame width is 8 bits or smaller.*/
-    spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
-                      STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
- 80089ce:	f422 6270 	bic.w	r2, r2, #3840	; 0xf00
+ 80089f8:	f422 6270 	bic.w	r2, r2, #3840	; 0xf00
   else {
     /* Frame width is larger than 8 bits.*/
     spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
- 80089d2:	bf48      	it	mi
- 80089d4:	f443 63a0 	orrmi.w	r3, r3, #1280	; 0x500
+ 80089fc:	bf48      	it	mi
+ 80089fe:	f443 63a0 	orrmi.w	r3, r3, #1280	; 0x500
   }
   else {
     /* Frame width is larger than 8 bits.*/
     spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
- 80089d8:	62e3      	str	r3, [r4, #44]	; 0x2c
+ 8008a02:	62e3      	str	r3, [r4, #44]	; 0x2c
                       STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
   }
   else {
     /* Frame width is larger than 8 bits.*/
     spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
- 80089da:	bf48      	it	mi
- 80089dc:	f442 62a0 	orrmi.w	r2, r2, #1280	; 0x500
+ 8008a04:	bf48      	it	mi
+ 8008a06:	f442 62a0 	orrmi.w	r2, r2, #1280	; 0x500
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
   }
   /* SPI setup and enable.*/
   spip->spi->CR1  = 0;
- 80089e0:	69e3      	ldr	r3, [r4, #28]
+ 8008a0a:	69e3      	ldr	r3, [r4, #28]
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE;
   }
   else {
     /* Frame width is larger than 8 bits.*/
     spip->rxdmamode = (spip->rxdmamode & ~STM32_DMA_CR_SIZE_MASK) |
- 80089e2:	62a2      	str	r2, [r4, #40]	; 0x28
+ 8008a0c:	62a2      	str	r2, [r4, #40]	; 0x28
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
   }
   /* SPI setup and enable.*/
   spip->spi->CR1  = 0;
   spip->spi->CR1  = spip->config->cr1 | SPI_CR1_MSTR | SPI_CR1_SSM |
- 80089e4:	f441 7141 	orr.w	r1, r1, #772	; 0x304
+ 8008a0e:	f441 7141 	orr.w	r1, r1, #772	; 0x304
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
   }
   /* SPI setup and enable.*/
   spip->spi->CR1  = 0;
- 80089e8:	2500      	movs	r5, #0
+ 8008a12:	2500      	movs	r5, #0
   spip->spi->CR1  = spip->config->cr1 | SPI_CR1_MSTR | SPI_CR1_SSM |
                     SPI_CR1_SSI;
   spip->spi->CR2  = SPI_CR2_SSOE | SPI_CR2_RXDMAEN | SPI_CR2_TXDMAEN;
- 80089ea:	2207      	movs	r2, #7
+ 8008a14:	2207      	movs	r2, #7
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
     spip->txdmamode = (spip->txdmamode & ~STM32_DMA_CR_SIZE_MASK) |
                       STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
   }
   /* SPI setup and enable.*/
   spip->spi->CR1  = 0;
- 80089ec:	801d      	strh	r5, [r3, #0]
+ 8008a16:	801d      	strh	r5, [r3, #0]
   spip->spi->CR1  = spip->config->cr1 | SPI_CR1_MSTR | SPI_CR1_SSM |
- 80089ee:	8019      	strh	r1, [r3, #0]
+ 8008a18:	8019      	strh	r1, [r3, #0]
                     SPI_CR1_SSI;
   spip->spi->CR2  = SPI_CR2_SSOE | SPI_CR2_RXDMAEN | SPI_CR2_TXDMAEN;
- 80089f0:	809a      	strh	r2, [r3, #4]
+ 8008a1a:	809a      	strh	r2, [r3, #4]
   spip->spi->CR1 |= SPI_CR1_SPE;
- 80089f2:	881a      	ldrh	r2, [r3, #0]
+ 8008a1c:	881a      	ldrh	r2, [r3, #0]
   spi_lld_start(spip);
   spip->state = SPI_READY;
- 80089f4:	2102      	movs	r1, #2
- 80089f6:	b292      	uxth	r2, r2
- 80089f8:	f042 0240 	orr.w	r2, r2, #64	; 0x40
- 80089fc:	801a      	strh	r2, [r3, #0]
- 80089fe:	7021      	strb	r1, [r4, #0]
- 8008a00:	f385 8811 	msr	BASEPRI, r5
+ 8008a1e:	2102      	movs	r1, #2
+ 8008a20:	b292      	uxth	r2, r2
+ 8008a22:	f042 0240 	orr.w	r2, r2, #64	; 0x40
+ 8008a26:	801a      	strh	r2, [r3, #0]
+ 8008a28:	7021      	strb	r1, [r4, #0]
+ 8008a2a:	f385 8811 	msr	BASEPRI, r5
   /* Configuration goes here - setup the PLL carrier, TX modem settings and the Packet handler Tx functionality*/
 	/*
 	* Initializes the SPI driver 1.
 	*/
 	spiStart(&SPID1, &spicfg);
 	si446x_initialise();
- 8008a04:	f7fe ff7c 	bl	8007900 <si446x_initialise>
- 8008a08:	2320      	movs	r3, #32
- 8008a0a:	f383 8811 	msr	BASEPRI, r3
+ 8008a2e:	f7fe ff67 	bl	8007900 <si446x_initialise>
+ 8008a32:	2320      	movs	r3, #32
+ 8008a34:	f383 8811 	msr	BASEPRI, r3
   osalDbgCheck((gptp != NULL) && (config != NULL));
 
   osalSysLock();
   osalDbgAssert((gptp->state == GPT_STOP) || (gptp->state == GPT_READY),
               "invalid state");
   gptp->config = config;
- 8008a0e:	f8df a224 	ldr.w	sl, [pc, #548]	; 8008c34 <SI_Thread.lto_priv.85+0x294>
- 8008a12:	4979      	ldr	r1, [pc, #484]	; (8008bf8 <SI_Thread.lto_priv.85+0x258>)
+ 8008a38:	f8df a1f4 	ldr.w	sl, [pc, #500]	; 8008c30 <SI_Thread.lto_priv.85+0x290>
+ 8008a3c:	496f      	ldr	r1, [pc, #444]	; (8008bfc <SI_Thread.lto_priv.85+0x25c>)
  * @notapi
  */
 void gpt_lld_start(GPTDriver *gptp) {
   uint16_t psc;
 
   if (gptp->state == GPT_STOP) {
- 8008a14:	f89a 3000 	ldrb.w	r3, [sl]
- 8008a18:	f8ca 1004 	str.w	r1, [sl, #4]
- 8008a1c:	2b01      	cmp	r3, #1
- 8008a1e:	f000 80b3 	beq.w	8008b88 <SI_Thread.lto_priv.85+0x1e8>
- 8008a22:	f8da 3008 	ldr.w	r3, [sl, #8]
+ 8008a3e:	f89a 3000 	ldrb.w	r3, [sl]
+ 8008a42:	f8ca 1004 	str.w	r1, [sl, #4]
+ 8008a46:	2b01      	cmp	r3, #1
+ 8008a48:	f000 80b0 	beq.w	8008bac <SI_Thread.lto_priv.85+0x20c>
+ 8008a4c:	f8da 3008 	ldr.w	r3, [sl, #8]
     }
 #endif
   }
 
   /* Prescaler value calculation.*/
   psc = (uint16_t)((gptp->clock / gptp->config->frequency) - 1);
- 8008a26:	680a      	ldr	r2, [r1, #0]
+ 8008a50:	680a      	ldr	r2, [r1, #0]
   /* Timer configuration.*/
   gptp->tim->CR1  = 0;                          /* Initially stopped.       */
   gptp->tim->CR2  = gptp->config->cr2;
   gptp->tim->PSC  = psc;                        /* Prescaler value.         */
   gptp->tim->SR   = 0;                          /* Clear pending IRQs.      */
   gptp->tim->DIER = gptp->config->dier &        /* DMA-related DIER bits.   */
- 8008a28:	68c8      	ldr	r0, [r1, #12]
+ 8008a52:	68c8      	ldr	r0, [r1, #12]
     }
 #endif
   }
 
   /* Prescaler value calculation.*/
   psc = (uint16_t)((gptp->clock / gptp->config->frequency) - 1);
- 8008a2a:	fbb3 f3f2 	udiv	r3, r3, r2
+ 8008a54:	fbb3 f3f2 	udiv	r3, r3, r2
   osalDbgAssert(((uint32_t)(psc + 1) * gptp->config->frequency) == gptp->clock,
                 "invalid frequency");
 
   /* Timer configuration.*/
   gptp->tim->CR1  = 0;                          /* Initially stopped.       */
   gptp->tim->CR2  = gptp->config->cr2;
- 8008a2e:	688d      	ldr	r5, [r1, #8]
+ 8008a58:	688d      	ldr	r5, [r1, #8]
   psc = (uint16_t)((gptp->clock / gptp->config->frequency) - 1);
   osalDbgAssert(((uint32_t)(psc + 1) * gptp->config->frequency) == gptp->clock,
                 "invalid frequency");
 
   /* Timer configuration.*/
   gptp->tim->CR1  = 0;                          /* Initially stopped.       */
- 8008a30:	f8da 200c 	ldr.w	r2, [sl, #12]
+ 8008a5a:	f8da 200c 	ldr.w	r2, [sl, #12]
     }
 #endif
   }
 
   /* Prescaler value calculation.*/
   psc = (uint16_t)((gptp->clock / gptp->config->frequency) - 1);
- 8008a34:	3b01      	subs	r3, #1
+ 8008a5e:	3b01      	subs	r3, #1
   osalDbgAssert(((uint32_t)(psc + 1) * gptp->config->frequency) == gptp->clock,
                 "invalid frequency");
 
   /* Timer configuration.*/
   gptp->tim->CR1  = 0;                          /* Initially stopped.       */
- 8008a36:	2100      	movs	r1, #0
+ 8008a60:	2100      	movs	r1, #0
     }
 #endif
   }
 
   /* Prescaler value calculation.*/
   psc = (uint16_t)((gptp->clock / gptp->config->frequency) - 1);
- 8008a38:	b29b      	uxth	r3, r3
+ 8008a62:	b29b      	uxth	r3, r3
   /* Timer configuration.*/
   gptp->tim->CR1  = 0;                          /* Initially stopped.       */
   gptp->tim->CR2  = gptp->config->cr2;
   gptp->tim->PSC  = psc;                        /* Prescaler value.         */
   gptp->tim->SR   = 0;                          /* Clear pending IRQs.      */
   gptp->tim->DIER = gptp->config->dier &        /* DMA-related DIER bits.   */
- 8008a3a:	f020 00ff 	bic.w	r0, r0, #255	; 0xff
+ 8008a64:	f020 00ff 	bic.w	r0, r0, #255	; 0xff
   gpt_lld_start(gptp);
   gptp->state = GPT_READY;
- 8008a3e:	2402      	movs	r4, #2
+ 8008a68:	2402      	movs	r4, #2
   psc = (uint16_t)((gptp->clock / gptp->config->frequency) - 1);
   osalDbgAssert(((uint32_t)(psc + 1) * gptp->config->frequency) == gptp->clock,
                 "invalid frequency");
 
   /* Timer configuration.*/
   gptp->tim->CR1  = 0;                          /* Initially stopped.       */
- 8008a40:	6011      	str	r1, [r2, #0]
+ 8008a6a:	6011      	str	r1, [r2, #0]
   gptp->tim->CR2  = gptp->config->cr2;
- 8008a42:	6055      	str	r5, [r2, #4]
- 8008a44:	f88a 4000 	strb.w	r4, [sl]
+ 8008a6c:	6055      	str	r5, [r2, #4]
+ 8008a6e:	f88a 4000 	strb.w	r4, [sl]
   gptp->tim->PSC  = psc;                        /* Prescaler value.         */
- 8008a48:	6293      	str	r3, [r2, #40]	; 0x28
+ 8008a72:	6293      	str	r3, [r2, #40]	; 0x28
   gptp->tim->SR   = 0;                          /* Clear pending IRQs.      */
- 8008a4a:	6111      	str	r1, [r2, #16]
+ 8008a74:	6111      	str	r1, [r2, #16]
   gptp->tim->DIER = gptp->config->dier &        /* DMA-related DIER bits.   */
- 8008a4c:	60d0      	str	r0, [r2, #12]
- 8008a4e:	f381 8811 	msr	BASEPRI, r1
- 8008a52:	4f6a      	ldr	r7, [pc, #424]	; (8008bfc <SI_Thread.lto_priv.85+0x25c>)
- 8008a54:	f8df b1b8 	ldr.w	fp, [pc, #440]	; 8008c10 <SI_Thread.lto_priv.85+0x270>
+ 8008a76:	60d0      	str	r0, [r2, #12]
+ 8008a78:	f381 8811 	msr	BASEPRI, r1
+ 8008a7c:	4e60      	ldr	r6, [pc, #384]	; (8008c00 <SI_Thread.lto_priv.85+0x260>)
+ 8008a7e:	f8df b198 	ldr.w	fp, [pc, #408]	; 8008c18 <SI_Thread.lto_priv.85+0x278>
 	gptStart(&GPTD4, &gpt4cfg);
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
 	if(MSG_OK == chBSemWaitTimeout(&Silabs_busy, MS2ST(100))) {/*Wait for something to happen...*/
 		/*Process the comms here - SPI transactions to either load packet and send or tune up/down*/
 		if(Command==1)
- 8008a58:	463d      	mov	r5, r7
- 8008a5a:	f8df 81dc 	ldr.w	r8, [pc, #476]	; 8008c38 <SI_Thread.lto_priv.85+0x298>
- 8008a5e:	4e68      	ldr	r6, [pc, #416]	; (8008c00 <SI_Thread.lto_priv.85+0x260>)
- 8008a60:	f10d 0908 	add.w	r9, sp, #8
- 8008a64:	e004      	b.n	8008a70 <SI_Thread.lto_priv.85+0xd0>
- */
-static inline void chBSemSignal(binary_semaphore_t *bsp) {
-
-  chSysLock();
-  chBSemSignalI(bsp);
-  chSchRescheduleS();
- 8008a66:	f7fe f8f3 	bl	8006c50 <chSchRescheduleS>
- 8008a6a:	2300      	movs	r3, #0
- 8008a6c:	f383 8811 	msr	BASEPRI, r3
+ 8008a82:	4635      	mov	r5, r6
+ 8008a84:	4f5f      	ldr	r7, [pc, #380]	; (8008c04 <SI_Thread.lto_priv.85+0x264>)
+ 8008a86:	f8df 8184 	ldr.w	r8, [pc, #388]	; 8008c0c <SI_Thread.lto_priv.85+0x26c>
+ 8008a8a:	f10d 0908 	add.w	r9, sp, #8
  * @api
  */
 static inline msg_t chBSemWaitTimeout(binary_semaphore_t *bsp,
                                       systime_t time) {
 
   return chSemWaitTimeout(&bsp->bs_sem, time);
- 8008a70:	4864      	ldr	r0, [pc, #400]	; (8008c04 <SI_Thread.lto_priv.85+0x264>)
- 8008a72:	21c8      	movs	r1, #200	; 0xc8
- 8008a74:	f7fe fac4 	bl	8007000 <chSemWaitTimeout>
+ 8008a8e:	485e      	ldr	r0, [pc, #376]	; (8008c08 <SI_Thread.lto_priv.85+0x268>)
+ 8008a90:	21c8      	movs	r1, #200	; 0xc8
+ 8008a92:	f7fe fab5 	bl	8007000 <chSemWaitTimeout>
 	*/
 	spiStart(&SPID1, &spicfg);
 	si446x_initialise();
 	gptStart(&GPTD4, &gpt4cfg);
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
 	if(MSG_OK == chBSemWaitTimeout(&Silabs_busy, MS2ST(100))) {/*Wait for something to happen...*/
- 8008a78:	4604      	mov	r4, r0
- 8008a7a:	b968      	cbnz	r0, 8008a98 <SI_Thread.lto_priv.85+0xf8>
+ 8008a96:	4604      	mov	r4, r0
+ 8008a98:	2800      	cmp	r0, #0
+ 8008a9a:	d1f8      	bne.n	8008a8e <SI_Thread.lto_priv.85+0xee>
 		/*Process the comms here - SPI transactions to either load packet and send or tune up/down*/
 		if(Command==1)
- 8008a7c:	783b      	ldrb	r3, [r7, #0]
- 8008a7e:	2b01      	cmp	r3, #1
- 8008a80:	d014      	beq.n	8008aac <SI_Thread.lto_priv.85+0x10c>
+ 8008a9c:	7833      	ldrb	r3, [r6, #0]
+ 8008a9e:	2b01      	cmp	r3, #1
+ 8008aa0:	d017      	beq.n	8008ad2 <SI_Thread.lto_priv.85+0x132>
 			Active_Frequency+=50;
 		else if(Command==2)
- 8008a82:	782b      	ldrb	r3, [r5, #0]
- 8008a84:	2b02      	cmp	r3, #2
- 8008a86:	d017      	beq.n	8008ab8 <SI_Thread.lto_priv.85+0x118>
+ 8008aa2:	782b      	ldrb	r3, [r5, #0]
+ 8008aa4:	2b02      	cmp	r3, #2
+ 8008aa6:	d018      	beq.n	8008ada <SI_Thread.lto_priv.85+0x13a>
 			Active_Frequency-=50;
 		else if(Command==3) {/*Load the string into the packet handler*/
- 8008a88:	782b      	ldrb	r3, [r5, #0]
- 8008a8a:	2b03      	cmp	r3, #3
- 8008a8c:	d028      	beq.n	8008ae0 <SI_Thread.lto_priv.85+0x140>
+ 8008aa8:	782b      	ldrb	r3, [r5, #0]
+ 8008aaa:	2b03      	cmp	r3, #3
+ 8008aac:	d02a      	beq.n	8008b04 <SI_Thread.lto_priv.85+0x164>
 			/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
 			memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
 			si446x_failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
 			gptStartOneShot(&GPTD4, 900); // 0.9 seconds to send the packet
 		}
 		if(Command && Command<3) /*Load the frequency into the PLL*/
- 8008a8e:	783b      	ldrb	r3, [r7, #0]
- 8008a90:	b113      	cbz	r3, 8008a98 <SI_Thread.lto_priv.85+0xf8>
- 8008a92:	782b      	ldrb	r3, [r5, #0]
- 8008a94:	2b02      	cmp	r3, #2
- 8008a96:	d915      	bls.n	8008ac4 <SI_Thread.lto_priv.85+0x124>
- 8008a98:	2320      	movs	r3, #32
- 8008a9a:	f383 8811 	msr	BASEPRI, r3
+ 8008aae:	7833      	ldrb	r3, [r6, #0]
+ 8008ab0:	b113      	cbz	r3, 8008ab8 <SI_Thread.lto_priv.85+0x118>
+ 8008ab2:	782b      	ldrb	r3, [r5, #0]
+ 8008ab4:	2b02      	cmp	r3, #2
+ 8008ab6:	d918      	bls.n	8008aea <SI_Thread.lto_priv.85+0x14a>
+ 8008ab8:	2320      	movs	r3, #32
+ 8008aba:	f383 8811 	msr	BASEPRI, r3
  */
 static inline void chBSemSignalI(binary_semaphore_t *bsp) {
 
   chDbgCheckClassI();
 
   if (bsp->bs_sem.s_cnt < 1)
- 8008a9e:	68b3      	ldr	r3, [r6, #8]
- 8008aa0:	2b00      	cmp	r3, #0
- 8008aa2:	dce0      	bgt.n	8008a66 <SI_Thread.lto_priv.85+0xc6>
-    chSemSignalI(&bsp->bs_sem);
- 8008aa4:	4856      	ldr	r0, [pc, #344]	; (8008c00 <SI_Thread.lto_priv.85+0x260>)
- 8008aa6:	f7fe fbcb 	bl	8007240 <chSemSignalI>
- 8008aaa:	e7dc      	b.n	8008a66 <SI_Thread.lto_priv.85+0xc6>
+ 8008abe:	f8d8 3008 	ldr.w	r3, [r8, #8]
+ 8008ac2:	2b00      	cmp	r3, #0
+ 8008ac4:	dd0d      	ble.n	8008ae2 <SI_Thread.lto_priv.85+0x142>
+ */
+static inline void chBSemSignal(binary_semaphore_t *bsp) {
+
+  chSysLock();
+  chBSemSignalI(bsp);
+  chSchRescheduleS();
+ 8008ac6:	f7fe f8c3 	bl	8006c50 <chSchRescheduleS>
+ 8008aca:	2300      	movs	r3, #0
+ 8008acc:	f383 8811 	msr	BASEPRI, r3
+ 8008ad0:	e7dd      	b.n	8008a8e <SI_Thread.lto_priv.85+0xee>
 	gptStart(&GPTD4, &gpt4cfg);
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
 	if(MSG_OK == chBSemWaitTimeout(&Silabs_busy, MS2ST(100))) {/*Wait for something to happen...*/
 		/*Process the comms here - SPI transactions to either load packet and send or tune up/down*/
 		if(Command==1)
 			Active_Frequency+=50;
- 8008aac:	f8d8 3000 	ldr.w	r3, [r8]
- 8008ab0:	3332      	adds	r3, #50	; 0x32
- 8008ab2:	f8c8 3000 	str.w	r3, [r8]
- 8008ab6:	e7ea      	b.n	8008a8e <SI_Thread.lto_priv.85+0xee>
+ 8008ad2:	683b      	ldr	r3, [r7, #0]
+ 8008ad4:	3332      	adds	r3, #50	; 0x32
+ 8008ad6:	603b      	str	r3, [r7, #0]
+ 8008ad8:	e7e9      	b.n	8008aae <SI_Thread.lto_priv.85+0x10e>
 		else if(Command==2)
 			Active_Frequency-=50;
- 8008ab8:	f8d8 3000 	ldr.w	r3, [r8]
- 8008abc:	3b32      	subs	r3, #50	; 0x32
- 8008abe:	f8c8 3000 	str.w	r3, [r8]
- 8008ac2:	e7e4      	b.n	8008a8e <SI_Thread.lto_priv.85+0xee>
+ 8008ada:	683b      	ldr	r3, [r7, #0]
+ 8008adc:	3b32      	subs	r3, #50	; 0x32
+ 8008ade:	603b      	str	r3, [r7, #0]
+ 8008ae0:	e7e5      	b.n	8008aae <SI_Thread.lto_priv.85+0x10e>
+static inline void chBSemSignalI(binary_semaphore_t *bsp) {
+
+  chDbgCheckClassI();
+
+  if (bsp->bs_sem.s_cnt < 1)
+    chSemSignalI(&bsp->bs_sem);
+ 8008ae2:	484a      	ldr	r0, [pc, #296]	; (8008c0c <SI_Thread.lto_priv.85+0x26c>)
+ 8008ae4:	f7fe fbac 	bl	8007240 <chSemSignalI>
+ 8008ae8:	e7ed      	b.n	8008ac6 <SI_Thread.lto_priv.85+0x126>
 			/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
 			memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
 			si446x_failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
 			gptStartOneShot(&GPTD4, 900); // 0.9 seconds to send the packet
 		}
 		if(Command && Command<3) /*Load the frequency into the PLL*/
- 8008ac4:	2300      	movs	r3, #0
+ 8008aea:	2300      	movs	r3, #0
 			si446x_failure|=si446x_set_frequency(Active_Frequency);
- 8008ac6:	f8d8 0000 	ldr.w	r0, [r8]
- 8008aca:	9301      	str	r3, [sp, #4]
- 8008acc:	f7fe fe28 	bl	8007720 <si446x_set_frequency>
- 8008ad0:	9b01      	ldr	r3, [sp, #4]
- 8008ad2:	4318      	orrs	r0, r3
- 8008ad4:	b2c3      	uxtb	r3, r0
+ 8008aec:	6838      	ldr	r0, [r7, #0]
+ 8008aee:	9301      	str	r3, [sp, #4]
+ 8008af0:	f7fe fe16 	bl	8007720 <si446x_set_frequency>
+ 8008af4:	9b01      	ldr	r3, [sp, #4]
+ 8008af6:	4318      	orrs	r0, r3
+ 8008af8:	b2c3      	uxtb	r3, r0
 		if(si446x_failure) {	/*Try to recover if radio breaks*/
- 8008ad6:	2b00      	cmp	r3, #0
- 8008ad8:	d0de      	beq.n	8008a98 <SI_Thread.lto_priv.85+0xf8>
+ 8008afa:	2b00      	cmp	r3, #0
+ 8008afc:	d0dc      	beq.n	8008ab8 <SI_Thread.lto_priv.85+0x118>
 			si446x_initialise();
- 8008ada:	f7fe ff11 	bl	8007900 <si446x_initialise>
- 8008ade:	e7db      	b.n	8008a98 <SI_Thread.lto_priv.85+0xf8>
+ 8008afe:	f7fe feff 	bl	8007900 <si446x_initialise>
+ 8008b02:	e7d9      	b.n	8008ab8 <SI_Thread.lto_priv.85+0x118>
 		if(Command==1)
 			Active_Frequency+=50;
 		else if(Command==2)
 			Active_Frequency-=50;
 		else if(Command==3) {/*Load the string into the packet handler*/
 			RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
- 8008ae0:	2001      	movs	r0, #1
- 8008ae2:	f7ff f9a5 	bl	8007e30 <RF_switch>
+ 8008b04:	2001      	movs	r0, #1
+ 8008b06:	f7ff f993 	bl	8007e30 <RF_switch>
 			tx_buffer[0]=0x66;/*The load to FIFO command*/
- 8008ae6:	2366      	movs	r3, #102	; 0x66
+ 8008b0a:	2366      	movs	r3, #102	; 0x66
 			strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
- 8008ae8:	4947      	ldr	r1, [pc, #284]	; (8008c08 <SI_Thread.lto_priv.85+0x268>)
- 8008aea:	4848      	ldr	r0, [pc, #288]	; (8008c0c <SI_Thread.lto_priv.85+0x26c>)
+ 8008b0c:	4940      	ldr	r1, [pc, #256]	; (8008c10 <SI_Thread.lto_priv.85+0x270>)
+ 8008b0e:	4841      	ldr	r0, [pc, #260]	; (8008c14 <SI_Thread.lto_priv.85+0x274>)
 			Active_Frequency+=50;
 		else if(Command==2)
 			Active_Frequency-=50;
 		else if(Command==3) {/*Load the string into the packet handler*/
 			RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
 			tx_buffer[0]=0x66;/*The load to FIFO command*/
- 8008aec:	f88b 3000 	strb.w	r3, [fp]
+ 8008b10:	f88b 3000 	strb.w	r3, [fp]
 			strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
- 8008af0:	f000 fba6 	bl	8009240 <strcpy>
+ 8008b14:	f000 fb94 	bl	8009240 <strcpy>
 			si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
- 8008af4:	4844      	ldr	r0, [pc, #272]	; (8008c08 <SI_Thread.lto_priv.85+0x268>)
- 8008af6:	f000 fc03 	bl	8009300 <strlen>
- 8008afa:	3001      	adds	r0, #1
- 8008afc:	4622      	mov	r2, r4
- 8008afe:	4944      	ldr	r1, [pc, #272]	; (8008c10 <SI_Thread.lto_priv.85+0x270>)
- 8008b00:	4b44      	ldr	r3, [pc, #272]	; (8008c14 <SI_Thread.lto_priv.85+0x274>)
- 8008b02:	b2c0      	uxtb	r0, r0
- 8008b04:	f7fe fd7c 	bl	8007600 <si446x_spi>
+ 8008b18:	483d      	ldr	r0, [pc, #244]	; (8008c10 <SI_Thread.lto_priv.85+0x270>)
+ 8008b1a:	f000 fbf1 	bl	8009300 <strlen>
+ 8008b1e:	3001      	adds	r0, #1
+ 8008b20:	4622      	mov	r2, r4
+ 8008b22:	493d      	ldr	r1, [pc, #244]	; (8008c18 <SI_Thread.lto_priv.85+0x278>)
+ 8008b24:	4b3d      	ldr	r3, [pc, #244]	; (8008c1c <SI_Thread.lto_priv.85+0x27c>)
+ 8008b26:	b2c0      	uxtb	r0, r0
+ 8008b28:	f7fe fd6a 	bl	8007600 <si446x_spi>
 			/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
 			memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
- 8008b08:	4b43      	ldr	r3, [pc, #268]	; (8008c18 <SI_Thread.lto_priv.85+0x278>)
- 8008b0a:	4a43      	ldr	r2, [pc, #268]	; (8008c18 <SI_Thread.lto_priv.85+0x278>)
- 8008b0c:	791b      	ldrb	r3, [r3, #4]
+ 8008b2c:	4b3c      	ldr	r3, [pc, #240]	; (8008c20 <SI_Thread.lto_priv.85+0x280>)
+ 8008b2e:	4a3c      	ldr	r2, [pc, #240]	; (8008c20 <SI_Thread.lto_priv.85+0x280>)
+ 8008b30:	791b      	ldrb	r3, [r3, #4]
 			Active_Frequency-=50;
 		else if(Command==3) {/*Load the string into the packet handler*/
 			RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
 			tx_buffer[0]=0x66;/*The load to FIFO command*/
 			strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
 			si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
- 8008b0e:	9001      	str	r0, [sp, #4]
+ 8008b32:	9001      	str	r0, [sp, #4]
 			/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
 			memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
- 8008b10:	6810      	ldr	r0, [r2, #0]
- 8008b12:	f889 3004 	strb.w	r3, [r9, #4]
- 8008b16:	4b41      	ldr	r3, [pc, #260]	; (8008c1c <SI_Thread.lto_priv.85+0x27c>)
- 8008b18:	f8c9 0000 	str.w	r0, [r9]
- 8008b1c:	e899 0003 	ldmia.w	r9, {r0, r1}
+ 8008b34:	6810      	ldr	r0, [r2, #0]
+ 8008b36:	f889 3004 	strb.w	r3, [r9, #4]
+ 8008b3a:	4b3a      	ldr	r3, [pc, #232]	; (8008c24 <SI_Thread.lto_priv.85+0x284>)
+ 8008b3c:	f8c9 0000 	str.w	r0, [r9]
+ 8008b40:	e899 0003 	ldmia.w	r9, {r0, r1}
 			si446x_failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
- 8008b20:	4622      	mov	r2, r4
+ 8008b44:	4622      	mov	r2, r4
 			RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
 			tx_buffer[0]=0x66;/*The load to FIFO command*/
 			strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
 			si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
 			/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
 			memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
- 8008b22:	f8cb 0000 	str.w	r0, [fp]
- 8008b26:	7019      	strb	r1, [r3, #0]
+ 8008b46:	f8cb 0000 	str.w	r0, [fp]
+ 8008b4a:	7019      	strb	r1, [r3, #0]
 			si446x_failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
- 8008b28:	2005      	movs	r0, #5
- 8008b2a:	1f19      	subs	r1, r3, #4
- 8008b2c:	4b39      	ldr	r3, [pc, #228]	; (8008c14 <SI_Thread.lto_priv.85+0x274>)
- 8008b2e:	f7fe fd67 	bl	8007600 <si446x_spi>
- 8008b32:	f8dd c004 	ldr.w	ip, [sp, #4]
- 8008b36:	2220      	movs	r2, #32
- 8008b38:	ea40 000c 	orr.w	r0, r0, ip
- 8008b3c:	b2c3      	uxtb	r3, r0
- 8008b3e:	f382 8811 	msr	BASEPRI, r2
+ 8008b4c:	2005      	movs	r0, #5
+ 8008b4e:	1f19      	subs	r1, r3, #4
+ 8008b50:	4b32      	ldr	r3, [pc, #200]	; (8008c1c <SI_Thread.lto_priv.85+0x27c>)
+ 8008b52:	f7fe fd55 	bl	8007600 <si446x_spi>
+ 8008b56:	f8dd c004 	ldr.w	ip, [sp, #4]
+ 8008b5a:	2220      	movs	r2, #32
+ 8008b5c:	ea40 000c 	orr.w	r0, r0, ip
+ 8008b60:	b2c3      	uxtb	r3, r0
+ 8008b62:	f382 8811 	msr	BASEPRI, r2
  *
  * @notapi
  */
 void gpt_lld_start_timer(GPTDriver *gptp, gptcnt_t interval) {
 
   gptp->tim->ARR   = (uint32_t)(interval - 1);  /* Time constant.           */
- 8008b42:	f240 3e83 	movw	lr, #899	; 0x383
+ 8008b66:	f240 3e83 	movw	lr, #899	; 0x383
 
   /* NOTE: After generating the UG event it takes several clock cycles before
      SR bit 0 goes to 1. This is because the clearing of CNT has been inserted
      before the clearing of SR, to give it some time.*/
   gptp->tim->SR    = 0;                         /* Clear pending IRQs.      */
   if (NULL != gptp->config->callback)
- 8008b46:	f8da 1004 	ldr.w	r1, [sl, #4]
+ 8008b6a:	f8da 1004 	ldr.w	r1, [sl, #4]
  *
  * @notapi
  */
 void gpt_lld_start_timer(GPTDriver *gptp, gptcnt_t interval) {
 
   gptp->tim->ARR   = (uint32_t)(interval - 1);  /* Time constant.           */
- 8008b4a:	f8da 200c 	ldr.w	r2, [sl, #12]
+ 8008b6e:	f8da 200c 	ldr.w	r2, [sl, #12]
 
   /* NOTE: After generating the UG event it takes several clock cycles before
      SR bit 0 goes to 1. This is because the clearing of CNT has been inserted
      before the clearing of SR, to give it some time.*/
   gptp->tim->SR    = 0;                         /* Clear pending IRQs.      */
   if (NULL != gptp->config->callback)
- 8008b4e:	6849      	ldr	r1, [r1, #4]
+ 8008b72:	6849      	ldr	r1, [r1, #4]
   osalDbgCheck(gptp != NULL);
   osalDbgCheck(gptp->config->callback != NULL);
   osalDbgAssert(gptp->state == GPT_READY,
                 "invalid state");
 
   gptp->state = GPT_ONESHOT;
- 8008b50:	f04f 0c04 	mov.w	ip, #4
+ 8008b74:	f04f 0c04 	mov.w	ip, #4
  * @notapi
  */
 void gpt_lld_start_timer(GPTDriver *gptp, gptcnt_t interval) {
 
   gptp->tim->ARR   = (uint32_t)(interval - 1);  /* Time constant.           */
   gptp->tim->EGR   = STM32_TIM_EGR_UG;          /* Update event.            */
- 8008b54:	2001      	movs	r0, #1
+ 8008b78:	2001      	movs	r0, #1
  *
  * @notapi
  */
 void gpt_lld_start_timer(GPTDriver *gptp, gptcnt_t interval) {
 
   gptp->tim->ARR   = (uint32_t)(interval - 1);  /* Time constant.           */
- 8008b56:	f8c2 e02c 	str.w	lr, [r2, #44]	; 0x2c
- 8008b5a:	f88a c000 	strb.w	ip, [sl]
+ 8008b7a:	f8c2 e02c 	str.w	lr, [r2, #44]	; 0x2c
+ 8008b7e:	f88a c000 	strb.w	ip, [sl]
   gptp->tim->EGR   = STM32_TIM_EGR_UG;          /* Update event.            */
- 8008b5e:	6150      	str	r0, [r2, #20]
+ 8008b82:	6150      	str	r0, [r2, #20]
   gptp->tim->CNT   = 0;                         /* Reset counter.           */
- 8008b60:	6254      	str	r4, [r2, #36]	; 0x24
+ 8008b84:	6254      	str	r4, [r2, #36]	; 0x24
 
   /* NOTE: After generating the UG event it takes several clock cycles before
      SR bit 0 goes to 1. This is because the clearing of CNT has been inserted
      before the clearing of SR, to give it some time.*/
   gptp->tim->SR    = 0;                         /* Clear pending IRQs.      */
- 8008b62:	6114      	str	r4, [r2, #16]
+ 8008b86:	6114      	str	r4, [r2, #16]
   if (NULL != gptp->config->callback)
- 8008b64:	b111      	cbz	r1, 8008b6c <SI_Thread.lto_priv.85+0x1cc>
+ 8008b88:	b111      	cbz	r1, 8008b90 <SI_Thread.lto_priv.85+0x1f0>
     gptp->tim->DIER |= STM32_TIM_DIER_UIE;      /* Update Event IRQ enabled.*/
- 8008b66:	68d1      	ldr	r1, [r2, #12]
- 8008b68:	4301      	orrs	r1, r0
- 8008b6a:	60d1      	str	r1, [r2, #12]
+ 8008b8a:	68d1      	ldr	r1, [r2, #12]
+ 8008b8c:	4301      	orrs	r1, r0
+ 8008b8e:	60d1      	str	r1, [r2, #12]
   gptp->tim->CR1   = STM32_TIM_CR1_URS | STM32_TIM_CR1_CEN;
- 8008b6c:	2105      	movs	r1, #5
- 8008b6e:	6011      	str	r1, [r2, #0]
- 8008b70:	2200      	movs	r2, #0
- 8008b72:	f382 8811 	msr	BASEPRI, r2
+ 8008b90:	2105      	movs	r1, #5
+ 8008b92:	6011      	str	r1, [r2, #0]
+ 8008b94:	2200      	movs	r2, #0
+ 8008b96:	f382 8811 	msr	BASEPRI, r2
 			gptStartOneShot(&GPTD4, 900); // 0.9 seconds to send the packet
 		}
 		if(Command && Command<3) /*Load the frequency into the PLL*/
- 8008b76:	783a      	ldrb	r2, [r7, #0]
- 8008b78:	2a00      	cmp	r2, #0
- 8008b7a:	d0ac      	beq.n	8008ad6 <SI_Thread.lto_priv.85+0x136>
- 8008b7c:	782a      	ldrb	r2, [r5, #0]
- 8008b7e:	2a02      	cmp	r2, #2
- 8008b80:	d9a1      	bls.n	8008ac6 <SI_Thread.lto_priv.85+0x126>
+ 8008b9a:	7832      	ldrb	r2, [r6, #0]
+ 8008b9c:	2a00      	cmp	r2, #0
+ 8008b9e:	d0ac      	beq.n	8008afa <SI_Thread.lto_priv.85+0x15a>
+ 8008ba0:	782a      	ldrb	r2, [r5, #0]
+ 8008ba2:	2a02      	cmp	r2, #2
+ 8008ba4:	d9a2      	bls.n	8008aec <SI_Thread.lto_priv.85+0x14c>
 			si446x_failure|=si446x_set_frequency(Active_Frequency);
 		if(si446x_failure) {	/*Try to recover if radio breaks*/
- 8008b82:	2b00      	cmp	r3, #0
- 8008b84:	d088      	beq.n	8008a98 <SI_Thread.lto_priv.85+0xf8>
- 8008b86:	e7a8      	b.n	8008ada <SI_Thread.lto_priv.85+0x13a>
+ 8008ba6:	2b00      	cmp	r3, #0
+ 8008ba8:	d086      	beq.n	8008ab8 <SI_Thread.lto_priv.85+0x118>
+ 8008baa:	e7a8      	b.n	8008afe <SI_Thread.lto_priv.85+0x15e>
       gptp->clock = STM32_TIMCLK1;
     }
 #endif
 #if STM32_GPT_USE_TIM4
     if (&GPTD4 == gptp) {
       rccEnableTIM4(FALSE);
- 8008b88:	4a25      	ldr	r2, [pc, #148]	; (8008c20 <SI_Thread.lto_priv.85+0x280>)
+ 8008bac:	4a12      	ldr	r2, [pc, #72]	; (8008bf8 <SI_Thread.lto_priv.85+0x258>)
  * @param[in] n         the interrupt number
  * @param[in] prio      the interrupt priority
  */
 void nvicEnableVector(uint32_t n, uint32_t prio) {
 
   NVIC->IP[n]        = NVIC_PRIORITY_MASK(prio);
- 8008b8a:	4826      	ldr	r0, [pc, #152]	; (8008c24 <SI_Thread.lto_priv.85+0x284>)
- 8008b8c:	69d4      	ldr	r4, [r2, #28]
+ 8008bae:	481e      	ldr	r0, [pc, #120]	; (8008c28 <SI_Thread.lto_priv.85+0x288>)
+ 8008bb0:	69d4      	ldr	r4, [r2, #28]
       rccResetTIM4();
       nvicEnableVector(STM32_TIM4_NUMBER, STM32_GPT_TIM4_IRQ_PRIORITY);
       gptp->clock = STM32_TIMCLK1;
- 8008b8e:	4f26      	ldr	r7, [pc, #152]	; (8008c28 <SI_Thread.lto_priv.85+0x288>)
+ 8008bb2:	4f1e      	ldr	r7, [pc, #120]	; (8008c2c <SI_Thread.lto_priv.85+0x28c>)
       gptp->clock = STM32_TIMCLK1;
     }
 #endif
 #if STM32_GPT_USE_TIM4
     if (&GPTD4 == gptp) {
       rccEnableTIM4(FALSE);
- 8008b90:	f044 0404 	orr.w	r4, r4, #4
- 8008b94:	61d4      	str	r4, [r2, #28]
+ 8008bb4:	f044 0404 	orr.w	r4, r4, #4
+ 8008bb8:	61d4      	str	r4, [r2, #28]
       rccResetTIM4();
- 8008b96:	6914      	ldr	r4, [r2, #16]
+ 8008bba:	6914      	ldr	r4, [r2, #16]
   NVIC->ICPR[n >> 5] = 1 << (n & 0x1F);
- 8008b98:	f04f 4680 	mov.w	r6, #1073741824	; 0x40000000
+ 8008bbc:	f04f 4680 	mov.w	r6, #1073741824	; 0x40000000
  * @param[in] n         the interrupt number
  * @param[in] prio      the interrupt priority
  */
 void nvicEnableVector(uint32_t n, uint32_t prio) {
 
   NVIC->IP[n]        = NVIC_PRIORITY_MASK(prio);
- 8008b9c:	f04f 0e70 	mov.w	lr, #112	; 0x70
- 8008ba0:	f044 0404 	orr.w	r4, r4, #4
- 8008ba4:	6114      	str	r4, [r2, #16]
+ 8008bc0:	f04f 0e70 	mov.w	lr, #112	; 0x70
+ 8008bc4:	f044 0404 	orr.w	r4, r4, #4
+ 8008bc8:	6114      	str	r4, [r2, #16]
       nvicEnableVector(STM32_TIM4_NUMBER, STM32_GPT_TIM4_IRQ_PRIORITY);
       gptp->clock = STM32_TIMCLK1;
- 8008ba6:	463b      	mov	r3, r7
- 8008ba8:	f8ca 7008 	str.w	r7, [sl, #8]
+ 8008bca:	463b      	mov	r3, r7
+ 8008bcc:	f8ca 7008 	str.w	r7, [sl, #8]
     }
 #endif
 #if STM32_GPT_USE_TIM4
     if (&GPTD4 == gptp) {
       rccEnableTIM4(FALSE);
       rccResetTIM4();
- 8008bac:	6115      	str	r5, [r2, #16]
- 8008bae:	f880 e31e 	strb.w	lr, [r0, #798]	; 0x31e
+ 8008bd0:	6115      	str	r5, [r2, #16]
+ 8008bd2:	f880 e31e 	strb.w	lr, [r0, #798]	; 0x31e
   NVIC->ICPR[n >> 5] = 1 << (n & 0x1F);
- 8008bb2:	f8c0 6180 	str.w	r6, [r0, #384]	; 0x180
+ 8008bd6:	f8c0 6180 	str.w	r6, [r0, #384]	; 0x180
   NVIC->ISER[n >> 5] = 1 << (n & 0x1F);
- 8008bb6:	6006      	str	r6, [r0, #0]
- 8008bb8:	e735      	b.n	8008a26 <SI_Thread.lto_priv.85+0x86>
-  /* If in stopped state then enables the SPI and DMA clocks.*/
-  if (spip->state == SPI_STOP) {
-#if STM32_SPI_USE_SPI1
-    if (&SPID1 == spip) {
-      bool b;
-      b = dmaStreamAllocate(spip->dmarx,
- 8008bba:	491c      	ldr	r1, [pc, #112]	; (8008c2c <SI_Thread.lto_priv.85+0x28c>)
- 8008bbc:	6a20      	ldr	r0, [r4, #32]
- 8008bbe:	f7ff fe9f 	bl	8008900 <dmaStreamAllocate.constprop.12>
-                            STM32_SPI_SPI1_IRQ_PRIORITY,
-                            (stm32_dmaisr_t)spi_lld_serve_rx_interrupt,
-                            (void *)spip);
-      osalDbgAssert(!b, "stream already allocated");
-      b = dmaStreamAllocate(spip->dmatx,
- 8008bc2:	491b      	ldr	r1, [pc, #108]	; (8008c30 <SI_Thread.lto_priv.85+0x290>)
- 8008bc4:	6a60      	ldr	r0, [r4, #36]	; 0x24
- 8008bc6:	f7ff fe9b 	bl	8008900 <dmaStreamAllocate.constprop.12>
-                            STM32_SPI_SPI1_IRQ_PRIORITY,
-                            (stm32_dmaisr_t)spi_lld_serve_tx_interrupt,
-                            (void *)spip);
-      osalDbgAssert(!b, "stream already allocated");
-      rccEnableSPI1(FALSE);
- 8008bca:	4915      	ldr	r1, [pc, #84]	; (8008c20 <SI_Thread.lto_priv.85+0x280>)
-      rccEnableSPI6(FALSE);
-    }
-#endif
-
-    /* DMA setup.*/
-    dmaStreamSetPeripheral(spip->dmarx, &spip->spi->DR);
- 8008bcc:	6a25      	ldr	r5, [r4, #32]
-    dmaStreamSetPeripheral(spip->dmatx, &spip->spi->DR);
- 8008bce:	6a60      	ldr	r0, [r4, #36]	; 0x24
-      b = dmaStreamAllocate(spip->dmatx,
-                            STM32_SPI_SPI1_IRQ_PRIORITY,
-                            (stm32_dmaisr_t)spi_lld_serve_tx_interrupt,
-                            (void *)spip);
-      osalDbgAssert(!b, "stream already allocated");
-      rccEnableSPI1(FALSE);
- 8008bd0:	698b      	ldr	r3, [r1, #24]
-      rccEnableSPI6(FALSE);
-    }
-#endif
-
-    /* DMA setup.*/
-    dmaStreamSetPeripheral(spip->dmarx, &spip->spi->DR);
- 8008bd2:	69e2      	ldr	r2, [r4, #28]
- 8008bd4:	682d      	ldr	r5, [r5, #0]
-    dmaStreamSetPeripheral(spip->dmatx, &spip->spi->DR);
- 8008bd6:	6800      	ldr	r0, [r0, #0]
-      b = dmaStreamAllocate(spip->dmatx,
-                            STM32_SPI_SPI1_IRQ_PRIORITY,
-                            (stm32_dmaisr_t)spi_lld_serve_tx_interrupt,
-                            (void *)spip);
-      osalDbgAssert(!b, "stream already allocated");
-      rccEnableSPI1(FALSE);
- 8008bd8:	f443 5380 	orr.w	r3, r3, #4096	; 0x1000
-      rccEnableSPI6(FALSE);
-    }
-#endif
-
-    /* DMA setup.*/
-    dmaStreamSetPeripheral(spip->dmarx, &spip->spi->DR);
- 8008bdc:	320c      	adds	r2, #12
-      b = dmaStreamAllocate(spip->dmatx,
-                            STM32_SPI_SPI1_IRQ_PRIORITY,
-                            (stm32_dmaisr_t)spi_lld_serve_tx_interrupt,
-                            (void *)spip);
-      osalDbgAssert(!b, "stream already allocated");
-      rccEnableSPI1(FALSE);
- 8008bde:	618b      	str	r3, [r1, #24]
-      rccEnableSPI6(FALSE);
-    }
-#endif
-
-    /* DMA setup.*/
-    dmaStreamSetPeripheral(spip->dmarx, &spip->spi->DR);
- 8008be0:	60aa      	str	r2, [r5, #8]
- 8008be2:	6863      	ldr	r3, [r4, #4]
-    dmaStreamSetPeripheral(spip->dmatx, &spip->spi->DR);
- 8008be4:	6082      	str	r2, [r0, #8]
- 8008be6:	e6ec      	b.n	80089c2 <SI_Thread.lto_priv.85+0x22>
- 8008be8:	20001de0 	.word	0x20001de0
- 8008bec:	0800a830 	.word	0x0800a830
- 8008bf0:	20001f3c 	.word	0x20001f3c
- 8008bf4:	0800a840 	.word	0x0800a840
- 8008bf8:	20000cb4 	.word	0x20000cb4
- 8008bfc:	20001fa8 	.word	0x20001fa8
- 8008c00:	20001fe4 	.word	0x20001fe4
- 8008c04:	20001f88 	.word	0x20001f88
- 8008c08:	20001ff0 	.word	0x20001ff0
- 8008c0c:	20001dd1 	.word	0x20001dd1
- 8008c10:	20001dd0 	.word	0x20001dd0
- 8008c14:	20001f30 	.word	0x20001f30
- 8008c18:	080094a0 	.word	0x080094a0
- 8008c1c:	20001dd4 	.word	0x20001dd4
- 8008c20:	40021000 	.word	0x40021000
- 8008c24:	e000e100 	.word	0xe000e100
- 8008c28:	02dc6c00 	.word	0x02dc6c00
- 8008c2c:	08008241 	.word	0x08008241
- 8008c30:	08007f11 	.word	0x08007f11
- 8008c34:	20001f6c 	.word	0x20001f6c
- 8008c38:	20000cf4 	.word	0x20000cf4
+ 8008bda:	6006      	str	r6, [r0, #0]
+ 8008bdc:	e738      	b.n	8008a50 <SI_Thread.lto_priv.85+0xb0>
+ 8008bde:	bf00      	nop
+ 8008be0:	20001de0 	.word	0x20001de0
+ 8008be4:	0800a830 	.word	0x0800a830
+ 8008be8:	20001f3c 	.word	0x20001f3c
+ 8008bec:	0800a840 	.word	0x0800a840
+ 8008bf0:	08008241 	.word	0x08008241
+ 8008bf4:	08007f11 	.word	0x08007f11
+ 8008bf8:	40021000 	.word	0x40021000
+ 8008bfc:	20000cb4 	.word	0x20000cb4
+ 8008c00:	20001fa8 	.word	0x20001fa8
+ 8008c04:	20000cf4 	.word	0x20000cf4
+ 8008c08:	20001f88 	.word	0x20001f88
+ 8008c0c:	20001fe4 	.word	0x20001fe4
+ 8008c10:	20001ff0 	.word	0x20001ff0
+ 8008c14:	20001dd1 	.word	0x20001dd1
+ 8008c18:	20001dd0 	.word	0x20001dd0
+ 8008c1c:	20001f30 	.word	0x20001f30
+ 8008c20:	080094a0 	.word	0x080094a0
+ 8008c24:	20001dd4 	.word	0x20001dd4
+ 8008c28:	e000e100 	.word	0xe000e100
+ 8008c2c:	02dc6c00 	.word	0x02dc6c00
+ 8008c30:	20001f6c 	.word	0x20001f6c
+ 8008c34:	f3af 8000 	nop.w
+ 8008c38:	f3af 8000 	nop.w
  8008c3c:	f3af 8000 	nop.w
 
 08008c40 <chTMStartMeasurementX.constprop.72>:

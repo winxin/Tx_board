@@ -32,21 +32,21 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY
   7 .comment      00000070  00000000  00000000  00018d2b  2**0
                   CONTENTS, READONLY
-  8 .debug_info   00022fcf  00000000  00000000  00018d9b  2**0
+  8 .debug_info   00022fcc  00000000  00000000  00018d9b  2**0
                   CONTENTS, READONLY, DEBUGGING
-  9 .debug_abbrev 00003fe0  00000000  00000000  0003bd6a  2**0
+  9 .debug_abbrev 00003fe0  00000000  00000000  0003bd67  2**0
                   CONTENTS, READONLY, DEBUGGING
- 10 .debug_loc    0000988a  00000000  00000000  0003fd4a  2**0
+ 10 .debug_loc    000097d8  00000000  00000000  0003fd47  2**0
                   CONTENTS, READONLY, DEBUGGING
- 11 .debug_aranges 000008a8  00000000  00000000  000495d4  2**0
+ 11 .debug_aranges 000008a8  00000000  00000000  0004951f  2**0
                   CONTENTS, READONLY, DEBUGGING
- 12 .debug_ranges 00003288  00000000  00000000  00049e7c  2**0
+ 12 .debug_ranges 00003288  00000000  00000000  00049dc7  2**0
                   CONTENTS, READONLY, DEBUGGING
- 13 .debug_line   00007d9a  00000000  00000000  0004d104  2**0
+ 13 .debug_line   00007d90  00000000  00000000  0004d04f  2**0
                   CONTENTS, READONLY, DEBUGGING
- 14 .debug_str    00004423  00000000  00000000  00054e9e  2**0
+ 14 .debug_str    00004423  00000000  00000000  00054ddf  2**0
                   CONTENTS, READONLY, DEBUGGING
- 15 .debug_frame  00001e98  00000000  00000000  000592c4  2**2
+ 15 .debug_frame  00001e98  00000000  00000000  00059204  2**2
                   CONTENTS, READONLY, DEBUGGING
 SYMBOL TABLE:
 08000000 l    d  startup	00000000 startup
@@ -65,7 +65,7 @@ SYMBOL TABLE:
 00000000 l    d  .debug_line	00000000 .debug_line
 00000000 l    d  .debug_str	00000000 .debug_str
 00000000 l    d  .debug_frame	00000000 .debug_frame
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans9.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans9.o
 08007f30 l     F .text	00000004 Vector8C
 08007f40 l     F .text	000000b0 VectorB0
 08007ff0 l     F .text	00000034 VectorB8
@@ -82,7 +82,7 @@ SYMBOL TABLE:
 20001744 l     O .bss	00000014 ep0_state
 20001758 l     O .bss	00000008 ep0setup_buffer
 0800a820 l     O .text	00000006 CSWTCH.32
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans0.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans0.o
 080015b0 l     F .text	00000048 long_to_string_with_divisor
 08001600 l     F .text	00000048 Thread1
 08001650 l     F .text	00000034 cmd_systime
@@ -121,7 +121,7 @@ e000ed04 l       *ABS*	00000000 SCB_ICSR
 00000000 l    df *ABS*	00000000 _arm_cmpsf2.o
 00000000 l    df *ABS*	00000000 _arm_fixsfsi.o
 00000000 l    df *ABS*	00000000 _arm_fixunssfsi.o
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans1.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans1.o
 08001e80 l     F .text	0000003e usbStartTransmitI
 08001ec0 l     F .text	00000028 set_address
 08001f60 l     F .text	00000002 tmo
@@ -134,14 +134,14 @@ e000ed04 l       *ABS*	00000000 SCB_ICSR
 080098d0 l     O .text	00000002 active_status
 20000c1c l     O .data	00000007 linecoding
 20001430 l     O .bss	00000010 ib.6313
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans2.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans2.o
 08002b00 l     F .text	00000004 null_provider
 08003520 l     F .text	00000024 thread1
 080034e0 l     F .text	00000040 thread2
 20000c28 l     O .data	0000000c mp1.lto_priv.110
 20001440 l     O .bss	00000020 test_heap
 20000c34 l     O .data	00000004 es2
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans3.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans3.o
 08003560 l     F .text	00000002 thread1.lto_priv.106
 080036f0 l     F .text	0000002c thread8
 08003790 l     F .text	00000028 thread3
@@ -152,7 +152,7 @@ e000ed04 l       *ABS*	00000000 SCB_ICSR
 08003ee0 l     F .text	00000014 thread1.lto_priv.105
 08004170 l     F .text	00000038 regfind
 20000c38 l     O .data	00000024 iq
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans4.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans4.o
 080046d0 l     F .text	00000020 thread4a
 080046f0 l     F .text	00000020 thread4b
 08004800 l     F .text	00000020 thread1.lto_priv.122
@@ -160,7 +160,7 @@ e000ed04 l       *ABS*	00000000 SCB_ICSR
 08004840 l     F .text	0000002a thread4
 08004870 l     F .text	00000024 thread2
 08004a90 l     F .text	00000018 thread3
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans5.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans5.o
 080050f0 l     F .text	00000006 h3
 08005100 l     F .text	00000006 h2
 08005110 l     F .text	00000006 h1
@@ -169,7 +169,7 @@ e000ed04 l       *ABS*	00000000 SCB_ICSR
 08005900 l     F .text	0000006c thread10
 08005850 l     F .text	00000020 thread12
 08009a70 l     O .text	0000000c evhndl
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans6.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans6.o
 08005b40 l     F .text	00000030 print_line
 08005cd0 l     F .text	00000150 thd2_execute
 08005f50 l     F .text	0000000c thread
@@ -231,10 +231,10 @@ e000ed04 l       *ABS*	00000000 SCB_ICSR
 200014a0 l     O .bss	00000010 tokens_buffer
 0800a490 l     O .text	00000010 testmtx1
 200014b0 l     O .bss	00000004 failpoint
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans7.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans7.o
 08006860 l     F .text	0000003c chSchDoRescheduleAhead
 080073d0 l     F .text	00000002 _unhandled_exception
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans8.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans8.o
 08007430 l     F .text	0000001e chprintf
 0800a4c0 l     O .text	00000024 ep1config
 20001720 l     O .bss	00000010 ep1instate
@@ -255,7 +255,7 @@ e000ed04 l       *ABS*	00000000 SCB_ICSR
 0800a6e0 l     O .text	00000008 vcom_string3
 0800a6f0 l     O .text	00000020 vcom_strings
 0800a710 l     O .text	00000008 vcom_device_descriptor
-00000000 l    df *ABS*	00000000 cce9s3rv.ltrans10.o
+00000000 l    df *ABS*	00000000 cc5WsaMW.ltrans10.o
 08008900 l     F .text	00000098 dmaStreamAllocate.constprop.12
 20000cb4 l     O .data	00000010 gpt4cfg
 0800a840 l     O .text	0000000c spicfg
@@ -631,7 +631,7 @@ e000ed04 l       *ABS*	00000000 SCB_ICSR
 08008fd0 g     F .text	0000003c .hidden chMBFetchI.constprop.24
 08005b70 g     F .text	0000000c .hidden tmr.lto_priv.79
 08002130 g     F .text	0000000a .hidden write.lto_priv.95
-080089a0 g     F .text	0000029c .hidden SI_Thread.lto_priv.85
+080089a0 g     F .text	00000294 .hidden SI_Thread.lto_priv.85
 20001fe4 g     O .bss	0000000c .hidden Silabs_callback
 20001fa8 g     O .bss	00000001 .hidden Command
 080006a8 g     F .text	0000027a .hidden __subdf3

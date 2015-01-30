@@ -343,8 +343,8 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 			si446x_initialise();
 			si446x_failure=0;
 		}
+		chBSemSignal(&Silabs_callback);
 	}
-	chBSemSignal(&Silabs_callback);
   }
 }
 
