@@ -143,11 +143,11 @@
  * PA7  - Alternative Push Pull 50Mhz (SCLK, SPI1 to si446x).
  * PA9  - Alternate output  (USART1 TX).
  * PA10 - Normal input      (USART1 RX).
- * PA15 - Push pull output 2Mhz (RFswitch driven via cutdown output, so needs a jumper to the GoPro header)
+ * PA15 - Push pull output 2Mhz set low (RFswitch driven via cutdown output, so needs a jumper to the GoPro header)
  */
 #define VAL_GPIOACRL            0xB8B34B88      /*  PA7...PA0 */
 #define VAL_GPIOACRH            0x288884B8      /* PA15...PA8 */
-#define VAL_GPIOAODR            0xFFFFFFFF
+#define VAL_GPIOAODR            0xFFFF7FFF
 
 /*
  * Port B setup.
