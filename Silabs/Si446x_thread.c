@@ -72,14 +72,18 @@ void silabs_get_part_id(BaseSequentialStream *chp, int argc, char *argv[]) {
  * RF switch driver function, this function is blocking and is called by the shell handler. Pulses the output for 40ms.  
  */
 void RF_switch(uint8_t state) {
-	if(state)
+	if(state==2)
 		palSetPad(GPIOB, GPIOB_RFSWITCH_A);
-	else
+	else if(state)
 		palSetPad(GPIOA, GPIOA_RFSWITCH_B);
-	chThdSleepMilliseconds(35);/*Spec is 30ms switching time max*/
-	palClearPad(GPIOB, GPIOB_RFSWITCH_A);
-	palClearPad(GPIOA, GPIOA_RFSWITCH_B);/*Clear both the pins*/
+	else {
+		palClearPad(GPIOB, GPIOB_RFSWITCH_A);
+		palClearPad(GPIOA, GPIOA_RFSWITCH_B);/*Clear both the pins*/
+	}
+	if(state) 		/*Spec is 30ms switching time max*/
+		gptStartOneShot(&GPTD3, 35);
 }
+
 
 /*
  * SPI end transfer callback.
@@ -105,6 +109,10 @@ static const SPIConfig spicfg = {
 };
 
 static void switch_output_callback(GPTDriver *gpt_ptr) {
+	RF_switch(2);
+}
+
+static void switch_off_callback(GPTDriver *gpt_ptr) {
 	RF_switch(0);
 }
 
@@ -112,6 +120,12 @@ static GPTConfig gpt4cfg =
 {
     1000,                    /* timer clock.*/
     switch_output_callback    /* Timer callback.*/
+};
+
+static GPTConfig gpt3cfg =
+{
+    1000,                    /* timer clock.*/
+    switch_off_callback    /* Timer callback.*/
 };
 
 /*
@@ -219,7 +233,7 @@ void si446x_set_deviation_channel_bps(uint32_t deviation, uint32_t channel_space
 void si446x_set_modem(void) {
 	//Set to CW mode
 	//Sets modem into direct asynchronous 2FSK mode using packet handler (default config is ok here), no Manchester
-	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x20, 0x02, 0x00, 0x02, 0x00}, 5*sizeof(uint8_t));
+	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x20, 0x02, 0x00, 0x02, 0x00}, 6*sizeof(uint8_t));
 	si446x_spi( 5, tx_buffer, 0, rx_buffer);
 	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with no seed, and 2FSK (note shared register area)
 	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x0E, 0x06, 0x00, 0x0A}, 7*sizeof(uint8_t));
@@ -319,6 +333,8 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 	si446x_initialise();
 	gptInit();
 	gptStart(&GPTD4, &gpt4cfg);
+	gptStart(&GPTD3, &gpt3cfg);
+	RF_switch(2);//Put switch in the Rx configuration
   while (TRUE) {//Main loop either retunes or sends strings, uses a volatile global to pass string pointers, special strings 'u' and 'd'. Callback via semaphore
 	if(MSG_OK == chBSemWaitTimeout(&Silabs_busy, MS2ST(100))) {/*Wait for something to happen...*/
 		/*Process the comms here - SPI transactions to either load packet and send or tune up/down*/
