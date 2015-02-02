@@ -236,7 +236,7 @@ void si446x_set_modem(void) {
 	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x20, 0x02, 0x00, 0x02, 0x00}, 6*sizeof(uint8_t));
 	si446x_spi( 5, tx_buffer, 0, rx_buffer);
 	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with no seed, and 2FSK (note shared register area)
-	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x0E, 0x06, 0x00, 0x0A}, 7*sizeof(uint8_t));
+	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x0E, 0x06, 0x00, 0xAA}, 7*sizeof(uint8_t));
 	si446x_spi( 7, tx_buffer, 0, rx_buffer);
 	//Configure the rx signal path, these setting are from WDS - lower the IF slightly and setup the CIC Rx filter
 	memcpy(tx_buffer, (uint8_t [15]){0x11, 0x20, 0x0B, 0x19, 0x80, 0x08, 0x03, 0x80, 0x00, 0xF0, 0x10, 0x74, 0xE8, 0x00, 0x55}, 15*sizeof(uint8_t));
@@ -345,7 +345,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 		else if(Command==3) {/*Load the string into the packet handler*/
 			RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
 			tx_buffer[0]=0x66;/*The load to FIFO command*/
-			strcpy(&tx_buffer[1],Command_string);/*Followed by the payload*/
+			strncpy(&(tx_buffer[1]),Command_string,6);/*Followed by the payload*/
 			si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
 			/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
 			memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
@@ -355,6 +355,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 		if(Command && Command<3) /*Load the frequency into the PLL*/
 			si446x_failure|=si446x_set_frequency(Active_Frequency);
 		if(si446x_failure) {	/*Try to recover if radio breaks*/
+			chThdSleepMilliseconds(400);/*Wait in case radio can finish what it was doing*/
 			si446x_initialise();
 			si446x_failure=0;
 		}
