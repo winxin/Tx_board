@@ -7,7 +7,7 @@ volatile uint32_t Active_Frequency=434075000;
 volatile uint8_t Active_level=32;	/*Approx 15dBm*/
 volatile uint16_t Active_shift=300;	/*300hz*/
 uint8_t Active_banddiv=10;
-int8_t Outdiv = 4;
+int8_t Outdiv = 8;
 
 const uint8_t Silabs_Header[4]="$$RO";
 
@@ -202,16 +202,16 @@ void si446x_set_deviation_channel_bps(uint32_t deviation, uint32_t channel_space
 	uint8_t rx_buffer[2];
 	//Make sure that Si446x::sendFrequencyToSi446x() was called before this function, so that we have set the global variable 'Outdiv' properly
 	//Outdiv = 8;
-	float units_per_hz = (( 0x40000 * Outdiv ) / (float)VCXO_FREQ);
+	float units_per_hz = ((float)( 0x40000 * Outdiv ) / (float)VCXO_FREQ);
 	// Set deviation for RTTY
-	uint32_t modem_freq_dev = (uint32_t)(units_per_hz * deviation / 2.0 );
+	uint32_t modem_freq_dev = (uint32_t)(units_per_hz * (float)deviation / 2.0 );
 	uint32_t mask = 0b11111111;
 	uint8_t modem_freq_dev_0 = mask & modem_freq_dev;
 	uint8_t modem_freq_dev_1 = mask & (modem_freq_dev >> 8);
 	uint8_t modem_freq_dev_2 = mask & (modem_freq_dev >> 16);
 	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x20, 0x03, 0x0A, modem_freq_dev_2, modem_freq_dev_1, modem_freq_dev_0}, 7*sizeof(uint8_t));
 	si446x_spi( 7, tx_buffer, 0, rx_buffer);
-	uint32_t channel_spacing = (uint32_t)(units_per_hz * channel_space / 2.0 );
+	uint32_t channel_spacing = (uint32_t)(units_per_hz * channel_space);
 	modem_freq_dev_0 = mask & channel_spacing ;
 	modem_freq_dev_1 = mask & (channel_spacing >> 8);
 	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x40, 0x02, 0x04, modem_freq_dev_1, modem_freq_dev_0}, 6*sizeof(uint8_t));
@@ -220,8 +220,13 @@ void si446x_set_deviation_channel_bps(uint32_t deviation, uint32_t channel_space
 	modem_freq_dev_0 = mask & bps;
 	modem_freq_dev_1 = mask & (bps >> 8);
 	modem_freq_dev_2 = mask & (bps >> 16);
-	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x20, 0x03, 0x03, modem_freq_dev_2, modem_freq_dev_1, modem_freq_dev_0}, 7*sizeof(uint8_t));
-	si446x_spi( 7, tx_buffer, 0, rx_buffer);
+	//divide VCXO_FREQ into its bytes; MSB first, this is needed for the NCO frequency for Tx mode - equal to the xtal for <200kbps
+	uint8_t x3 = VCXO_FREQ / 0x1000000;
+	uint8_t x2 = (VCXO_FREQ - (uint32_t)x3 * 0x1000000) / 0x10000;
+	uint8_t x1 = (VCXO_FREQ - (uint32_t)x3 * 0x1000000 - (uint32_t)x2 * 0x10000) / 0x100;
+	uint8_t x0 = (VCXO_FREQ - (uint32_t)x3 * 0x1000000 - (uint32_t)x2 * 0x10000 - (uint32_t)x1 * 0x100); 
+	memcpy(tx_buffer, (uint8_t [11]){0x11, 0x20, 0x07, 0x03, modem_freq_dev_2, modem_freq_dev_1, modem_freq_dev_0, x3, x2, x1, x0},11*sizeof(uint8_t));
+	si446x_spi( 11, tx_buffer, 0, rx_buffer);
 }
 
 /**
@@ -344,6 +349,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 			Active_Frequency-=50;
 		else if(Command==3) {/*Load the string into the packet handler*/
 			RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
+			chThdSleepMilliseconds(40);/*Wait for the switch to activate before proceeding*/
 			tx_buffer[0]=0x66;/*The load to FIFO command*/
 			strncpy(&(tx_buffer[1]),Command_string,6);/*Followed by the payload*/
 			si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
