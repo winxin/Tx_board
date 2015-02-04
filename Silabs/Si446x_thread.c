@@ -240,7 +240,7 @@ void si446x_set_modem(void) {
 	//Sets modem into direct asynchronous 2FSK mode using packet handler (default config is ok here), no Manchester
 	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x20, 0x02, 0x00, 0x02, 0x00}, 6*sizeof(uint8_t));
 	si446x_spi( 5, tx_buffer, 0, rx_buffer);
-	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with no seed, and 2FSK (note shared register area)
+	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with seed, and 2FSK (note shared register area)
 	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x0E, 0x06, 0x00, 0xAA}, 7*sizeof(uint8_t));
 	si446x_spi( 7, tx_buffer, 0, rx_buffer);
 	//Configure the rx signal path, these setting are from WDS - lower the IF slightly and setup the CIC Rx filter

@@ -27293,7 +27293,7 @@ void si446x_set_modem(void) {
  8008108:	497d      	ldr	r1, [pc, #500]	; (8008300 <si446x_initialise+0x400>)
  800810a:	2005      	movs	r0, #5
  800810c:	f7fe f9d0 	bl	80064b0 <si446x_spi>
-	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with no seed, and 2FSK (note shared register area)
+	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with seed, and 2FSK (note shared register area)
 	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x0E, 0x06, 0x00, 0xAA}, 7*sizeof(uint8_t));
  8008110:	4a7c      	ldr	r2, [pc, #496]	; (8008304 <si446x_initialise+0x404>)
  8008112:	ab13      	add	r3, sp, #76	; 0x4c
@@ -27313,7 +27313,7 @@ void si446x_set_modem(void) {
 	//Sets modem into direct asynchronous 2FSK mode using packet handler (default config is ok here), no Manchester
 	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x20, 0x02, 0x00, 0x02, 0x00}, 6*sizeof(uint8_t));
 	si446x_spi( 5, tx_buffer, 0, rx_buffer);
-	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with no seed, and 2FSK (note shared register area)
+	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with seed, and 2FSK (note shared register area)
 	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x0E, 0x06, 0x00, 0xAA}, 7*sizeof(uint8_t));
 	si446x_spi( 7, tx_buffer, 0, rx_buffer);
  8008130:	462a      	mov	r2, r5
@@ -27321,7 +27321,7 @@ void si446x_set_modem(void) {
 	//Sets modem into direct asynchronous 2FSK mode using packet handler (default config is ok here), no Manchester
 	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x20, 0x02, 0x00, 0x02, 0x00}, 6*sizeof(uint8_t));
 	si446x_spi( 5, tx_buffer, 0, rx_buffer);
-	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with no seed, and 2FSK (note shared register area)
+	//Also configure the RX packet CRC stuff here, 6 byte payload for FIELD1, using CRC and CRC check for rx with seed, and 2FSK (note shared register area)
 	memcpy(tx_buffer, (uint8_t [7]){0x11, 0x12, 0x03, 0x0E, 0x06, 0x00, 0xAA}, 7*sizeof(uint8_t));
  8008132:	6020      	str	r0, [r4, #0]
  8008134:	80a1      	strh	r1, [r4, #4]
