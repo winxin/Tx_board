@@ -282,6 +282,9 @@ void si446x_set_modem(void) {
 	//Use CCIT-16 CRC with 0xFFFF seed on the packet handler, same as UKHAS protocol
 	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x12, 0x01, 0x00, 0x85}, 5*sizeof(uint8_t));
 	si446x_spi( 5, tx_buffer, 0, rx_buffer);
+	//Use bytes for preamble length - so defaults to 8bytes
+	memcpy(tx_buffer, (uint8_t [5]){0x11, 0x10, 0x01, 0x04, 0x31}, 5*sizeof(uint8_t));
+	si446x_spi( 5, tx_buffer, 0, rx_buffer);
 	//Set the sync word as two bytes 0xD391, this has good autocorrelation 8/1 peak to secondary ratio, default config used, no bit errors, 16 bit
 	memcpy(tx_buffer, (uint8_t [6]){0x11, 0x11, 0x02, 0x01, 0xD3, 0x91}, 6*sizeof(uint8_t));
 	si446x_spi( 6, tx_buffer, 0, rx_buffer);
