@@ -1,11 +1,17 @@
 #include "Si446x_thread.h"
 
+#define ACTIVE_FREQUENCY 434075000UL
+#define DEVIATION 300
+#define CHANNEL_SPACING 600
+#define BPS 200
+
 volatile uint8_t Command_string[8]={};
 volatile uint8_t Command=0;
 binary_semaphore_t Silabs_busy,Silabs_callback;
-volatile uint32_t Active_Frequency=434075000;
+volatile uint32_t Active_Frequency=ACTIVE_FREQUENCY;
 volatile uint8_t Active_level=32;	/*Approx 15dBm*/
-volatile uint16_t Active_shift=300;	/*300hz*/
+volatile uint16_t Active_shift=CHANNEL_SPACING;/*600hz*/
+volatile uint8_t Active_channel=0;	/*Command interface allows channel to be changed to track auto retune*/
 uint8_t Active_banddiv=10;
 int8_t Outdiv = 8;
 
@@ -45,6 +51,35 @@ void silabs_tune_down(BaseSequentialStream *chp, int argc, char *argv[]) {
 	}
 }
 
+void silabs_tune_reset(BaseSequentialStream *chp, int argc, char *argv[]) {
+	if (argc > 0) {
+		chprintf(chp, "Tunes to default frequency, Usage: r\r\n");
+		return;
+	}
+	Command=4;
+	chBSemSignal(&Silabs_busy);
+	if(MSG_OK == chBSemWaitTimeout(&Silabs_callback, MS2ST(1000))) {
+		chprintf(chp, "Frequency is: %u\r\n",Active_Frequency);
+	}
+}
+
+void silabs_set_channel(BaseSequentialStream *chp, int argc, char *argv[]) {
+	if (argc > 0) {
+		chprintf(chp, "Tunes to a channel, Usage: c <channel 0 to 8>\r\n");
+		return;
+	}
+	if (strlen(argv[0]) != 1 || ((uint8_t*)(argv[0]))[0]-48>8) {
+		chprintf(chp, "<channel> must be exactly 1 character and in 0-8 range\r\n");
+		return;
+	}
+	Active_channel=((uint8_t*)(argv[0]))[0]-48;
+	Command=5;
+	chBSemSignal(&Silabs_busy);
+	if(MSG_OK == chBSemWaitTimeout(&Silabs_callback, MS2ST(1000))) {
+		chprintf(chp, "Channel is: %u\r\n",Active_channel);
+	}
+}
+
 void silabs_send_command(BaseSequentialStream *chp, int argc, char *argv[]) {
 	if (argc != 1) {
 		chprintf(chp, "Sends a packet, Usage: s <packet>\r\n");
@@ -65,7 +100,7 @@ void silabs_get_part_id(BaseSequentialStream *chp, int argc, char *argv[]) {
 		chprintf(chp, "Gets part ID, Usage: p \r\n");
 		return;
 	}
-	chprintf(chp, "%4X\r\n",Silabs_Part_ID);
+	chprintf(chp, "%4X\r\n",__REV16(Silabs_Part_ID));/* Fix endianess */
 }
 
 /* 
@@ -320,7 +355,7 @@ void si446x_initialise(void) {
 	//Setup the default frequency and power
 	si446x_set_frequency(Active_Frequency);
 	//Setup default channel config
-	si446x_set_deviation_channel_bps(300, 3000, 200);
+	si446x_set_deviation_channel_bps(DEVIATION, CHANNEL_SPACING, BPS);
 	si446x_set_modem();
 }
 
@@ -333,6 +368,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
   (void)arg;
   chRegSetThreadName("si4432");
 	uint8_t si446x_failure=0;
+	uint8_t channel=0;
   /* Configuration goes here - setup the PLL carrier, TX modem settings and the Packet handler Tx functionality*/
 	/*
 	* Initializes the SPI driver 1.
@@ -356,12 +392,16 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 			tx_buffer[0]=0x66;/*The load to FIFO command*/
 			strncpy(&(tx_buffer[1]),Command_string,6);/*Followed by the payload*/
 			si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
-			/*Now go to TX mode, with return to ready mode on completion, always use channel 0, use Packet handler settings for the data length*/
-			memcpy(tx_buffer, (uint8_t [5]){0x31, 0x00, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
+			/*Now go to TX mode, with return to ready mode on completion, always use active channel, use Packet handler settings for the data length*/
+			memcpy(tx_buffer, (uint8_t [5]){0x31, channel, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
 			si446x_failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
 			gptStartOneShot(&GPTD4, 900); // 0.9 seconds to send the packet
 		}
-		if(Command && Command<3) /*Load the frequency into the PLL*/
+		else if(Command==4)
+			Active_Frequency=ACTIVE_FREQUENCY;
+		else if(Command==5) /*Load a new channel*/
+			channel=Active_channel;
+		if(Command && (Command<3 || Command==4) ) /*Load the frequency into the PLL*/
 			si446x_failure|=si446x_set_frequency(Active_Frequency);
 		if(si446x_failure) {	/*Try to recover if radio breaks*/
 			chThdSleepMilliseconds(400);/*Wait in case radio can finish what it was doing*/
