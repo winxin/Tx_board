@@ -24,6 +24,7 @@ uint8_t rx_buffer[12];
 
 #define VCXO_FREQ 26000000UL
 #define RSSI_THRESH -100
+#define DEFAULT_HEADER "$$ROK"
 
 static void spicb(SPIDriver *spip);
 
@@ -91,6 +92,36 @@ void silabs_send_command(BaseSequentialStream *chp, int argc, char *argv[]) {
 	}
 	strncpy(Command_string,argv[0],6);
 	Command=3;	
+	chBSemSignal(&Silabs_busy);
+	chBSemWaitTimeout(&Silabs_callback, MS2ST(1000));	
+}
+
+void silabs_send_packet(BaseSequentialStream *chp, int argc, char *argv[]) {
+	if (argc != 1) {
+		chprintf(chp, "Sends a packet, Usage: w <packet>\r\n Packet is proceeded by packet header (set this first, default '%s')\r\n",DEFAULT_HEADER);
+		return;
+	}
+	if (strlen(argv[0]) != 1) {
+		chprintf(chp, "<packet> must be exactly 1 character\r\n");
+		return;
+	}
+	strncpy(Command_string,argv[0],1);
+	Command=7;	
+	chBSemSignal(&Silabs_busy);
+	chBSemWaitTimeout(&Silabs_callback, MS2ST(1000));	
+}
+
+void silabs_set_header(BaseSequentialStream *chp, int argc, char *argv[]) {
+	if (argc != 1) {
+		chprintf(chp, "Sets a packet header for use with 'w' command, Usage: h <packet_header>\r\n");
+		return;
+	}
+	if (strlen(argv[0]) != 5) {
+		chprintf(chp, "<packet_header> must be exactly 5 characters\r\n");
+		return;
+	}
+	strncpy(Command_string,argv[0],5);
+	Command=6;	
 	chBSemSignal(&Silabs_busy);
 	chBSemWaitTimeout(&Silabs_callback, MS2ST(1000));	
 }
@@ -369,6 +400,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
   chRegSetThreadName("si4432");
 	uint8_t si446x_failure=0;
 	uint8_t channel=0;
+	uint8_t packet_header[]=DEFAULT_HEADER;
   /* Configuration goes here - setup the PLL carrier, TX modem settings and the Packet handler Tx functionality*/
 	/*
 	* Initializes the SPI driver 1.
@@ -386,11 +418,16 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 			Active_Frequency+=50;
 		else if(Command==2)
 			Active_Frequency-=50;
-		else if(Command==3) {/*Load the string into the packet handler*/
+		else if(Command==3 || Command==7) {/*Load the string into the packet handler*/
 			RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
 			chThdSleepMilliseconds(40);/*Wait for the switch to activate before proceeding*/
 			tx_buffer[0]=0x66;/*The load to FIFO command*/
-			strncpy(&(tx_buffer[1]),Command_string,6);/*Followed by the payload*/
+			if(Command!=3)
+				strncpy(&(tx_buffer[1]),Command_string,6);/*Followed by the payload*/
+			else {
+				strncpy(&(tx_buffer[1]),packet_header,5);/*Use the packet header as the first 5 bytes of payload*/
+				strncpy(&(tx_buffer[6]),Command_string,1);/*Load the argument*/
+			}
 			si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
 			/*Now go to TX mode, with return to ready mode on completion, always use active channel, use Packet handler settings for the data length*/
 			memcpy(tx_buffer, (uint8_t [5]){0x31, channel, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
@@ -401,6 +438,8 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 			Active_Frequency=ACTIVE_FREQUENCY;
 		else if(Command==5) /*Load a new channel*/
 			channel=Active_channel;
+		else if(Command==6) /*Load a new packet header string*/
+			strncpy(packet_header,Command_string,5);
 		if(Command && (Command<3 || Command==4) ) /*Load the frequency into the PLL*/
 			si446x_failure|=si446x_set_frequency(Active_Frequency);
 		if(si446x_failure) {	/*Try to recover if radio breaks*/

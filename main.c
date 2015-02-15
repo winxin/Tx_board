@@ -125,7 +125,8 @@ static void cmd_help(BaseSequentialStream *chp, int argc, char *argv[]) {
   if (argc > 0) {
     chprintf(chp, "Usage: \r\n 'mem' runs cmd_mem: ChibiOS self test\r\n 'threads' runs cmd_threads: ChibiOS self test\r\n \
  'test' runs cmd_test: ChibiOS self test\r\n, 'write' runs cmd_write: ChibiOS CDCACM self test\r\n 'u' tunes up 50 hz\r\n \
- 'd' tunes down 50hz\r\n 'r' resets tuning\r\n 's' sends packet\r\n 'c' sets channel number\r\n 'p' gives part number\r\n '?' displays help\r\n");
+ 'd' tunes down 50hz\r\n 'r' resets tuning\r\n 's' sends packet\r\n 'w' sends packet with header\r\n 'c' sets channel number\r\n \
+ 'h' sets packet header\r\n 'p' gives part number\r\n '?' displays help\r\n");
     return;
   }
 }
@@ -138,6 +139,8 @@ static const ShellCommand commands[] = {
   {"u", silabs_tune_up},
   {"d", silabs_tune_down},
   {"s", silabs_send_command},
+  {"w", silabs_send_packet},
+  {"h", silabs_set_header},
   {"p", silabs_get_part_id},
   {"r", silabs_tune_reset},
   {"c", silabs_set_channel},
