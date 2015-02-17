@@ -122,13 +122,25 @@ static void cmd_write(BaseSequentialStream *chp, int argc, char *argv[]) {
 
 static void cmd_help(BaseSequentialStream *chp, int argc, char *argv[]) {
   (void)argv;
-  if (argc > 0) {
-    chprintf(chp, "Usage: \r\n 'mem' runs cmd_mem: ChibiOS self test\r\n 'threads' runs cmd_threads: ChibiOS self test\r\n \
- 'test' runs cmd_test: ChibiOS self test\r\n, 'write' runs cmd_write: ChibiOS CDCACM self test\r\n 'u' tunes up 50 hz\r\n \
- 'd' tunes down 50hz\r\n 'r' resets tuning\r\n 's' sends packet\r\n 'w' sends packet with header\r\n 'c' sets channel number\r\n \
- 'h' sets packet header\r\n 'p' gives part number\r\n '?' displays help\r\n");
+  if (argc == 0) {
+    chprintf(chp, "Usage: \r\n");
+    chprintf(chp, "'mem' runs cmd_mem: ChibiOS self test\r\n");
+    chprintf(chp, "'threads' runs cmd_threads: ChibiOS self test\r\n");
+    chprintf(chp, "'test' runs cmd_test: ChibiOS self test\r\n");
+    chprintf(chp, "'write' runs cmd_write: ChibiOS CDCACM self test\r\n");
+    chprintf(chp, "'u' tunes up 50 hz\r\n");
+    chprintf(chp, "'d' tunes down 50hz\r\n");
+    chprintf(chp, "'r' resets tuning\r\n");
+    chprintf(chp, "'s' sends packet\r\n");
+    chprintf(chp, "'w' sends packet with header\r\n");
+    chprintf(chp, "'c' sets channel number\r\n");
+    chprintf(chp, "'h' sets packet header\r\n");
+    chprintf(chp, "'p' gives part number\r\n");
+    chprintf(chp, "'man'/'?' displays help\r\n");
     return;
   }
+  else
+    chprintf(chp, "Usage: 'man' or '?' gives command info \r\n");
 }
 
 static const ShellCommand commands[] = {
@@ -145,6 +157,7 @@ static const ShellCommand commands[] = {
   {"r", silabs_tune_reset},
   {"c", silabs_set_channel},
   {"?", cmd_help},
+  {"man", cmd_help},
   {NULL, NULL}
 };
 

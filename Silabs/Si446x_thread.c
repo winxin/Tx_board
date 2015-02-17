@@ -65,7 +65,7 @@ void silabs_tune_reset(BaseSequentialStream *chp, int argc, char *argv[]) {
 }
 
 void silabs_set_channel(BaseSequentialStream *chp, int argc, char *argv[]) {
-	if (argc > 0) {
+	if (argc != 1) {
 		chprintf(chp, "Tunes to a channel, Usage: c <channel 0 to 8>\r\n");
 		return;
 	}
