@@ -428,7 +428,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 				strncpy(&(tx_buffer[1]),packet_header,5);/*Use the packet header as the first 5 bytes of payload*/
 				strncpy(&(tx_buffer[6]),Command_string,1);/*Load the argument*/
 			}
-			si446x_failure|=si446x_spi( strlen(Command_string)+1, tx_buffer, 0, rx_buffer);
+			si446x_failure|=si446x_spi( 7, tx_buffer, 0, rx_buffer);
 			/*Now go to TX mode, with return to ready mode on completion, always use active channel, use Packet handler settings for the data length*/
 			memcpy(tx_buffer, (uint8_t [5]){0x31, channel, 0x30, 0x00, 0x00}, 5*sizeof(uint8_t));
 			si446x_failure|=si446x_spi( 5, tx_buffer, 0, rx_buffer);
