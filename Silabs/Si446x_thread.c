@@ -1,7 +1,7 @@
 #include "Si446x_thread.h"
 
 #define ACTIVE_FREQUENCY 434075000UL
-#define DEVIATION 300
+#define DEVIATION 200
 #define CHANNEL_SPACING 600
 #define BPS 200
 
