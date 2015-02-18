@@ -422,7 +422,7 @@ static __attribute__((noreturn)) THD_FUNCTION(SI_Thread, arg) {
 			RF_switch(1);/*Turn the Agilent RF switch to relay the data*/
 			chThdSleepMilliseconds(40);/*Wait for the switch to activate before proceeding*/
 			tx_buffer[0]=0x66;/*The load to FIFO command*/
-			if(Command!=3)
+			if(Command==3)
 				strncpy(&(tx_buffer[1]),Command_string,6);/*Followed by the payload*/
 			else {
 				strncpy(&(tx_buffer[1]),packet_header,5);/*Use the packet header as the first 5 bytes of payload*/
